@@ -1,0 +1,512 @@
+import { createClient } from "@/lib/supabase/server";
+import type { Profile, Sample, Submission } from "@/types/database";
+
+/* ─── Auth types ─────────────────────────────────────────────── */
+
+export interface AuthUser {
+  id: string;
+  email: string;
+}
+
+export interface SessionData {
+  user: AuthUser;
+  /** null only if the DB trigger hasn't run yet (race condition on first sign-up) */
+  profile: Profile | null;
+}
+
+/* ─── Auth queries ───────────────────────────────────────────── */
+
+export async function getCurrentSession(): Promise<SessionData | null> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) return null;
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url, bio, created_at, updated_at")
+    .eq("id", user.id)
+    .single();
+
+  return {
+    user: { id: user.id, email: user.email ?? "" },
+    profile: (data as Profile | null) ?? null,
+  };
+}
+
+export async function getIsAuthenticated(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return !!user;
+}
+
+/* ─── Sample queries ─────────────────────────────────────────── */
+
+export async function getTodaySample(): Promise<Sample | null> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data } = await supabase
+    .from("samples")
+    .select("*")
+    .eq("active_date", today)
+    .single();
+
+  return (data as Sample | null) ?? null;
+}
+
+/* ─── Leaderboard period type ────────────────────────────────── */
+
+export type LeaderboardPeriod = "today" | "week" | "alltime";
+
+/**
+ * Returns an ISO timestamp for the start of the given period in UTC,
+ * or null for "alltime".
+ *
+ * - today   → 00:00:00 UTC of the current date
+ * - week    → 00:00:00 UTC seven days ago
+ * - alltime → null (no date filter)
+ */
+function periodStartISO(period: LeaderboardPeriod): string | null {
+  if (period === "alltime") return null;
+
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  if (period === "week") d.setUTCDate(d.getUTCDate() - 7);
+  return d.toISOString();
+}
+
+/* ─── Shared submission fetcher ──────────────────────────────── */
+
+export type SubmissionSort = "top" | "new";
+
+interface FetchSubmissionsOptions {
+  /** Filter to a specific sample */
+  sampleId?: string;
+  /** Only return submissions created at or after this ISO timestamp */
+  since?: string | null;
+  /** Populate liked_by_user for this user */
+  userId?: string;
+  /** Max rows to return */
+  limit?: number;
+  /**
+   * top (default) = order by like_count DESC then created_at DESC
+   * new           = order by created_at DESC only
+   */
+  sort?: SubmissionSort;
+}
+
+/**
+ * Internal query helper shared by getSubmissionsForSample and
+ * getTopSubmissions. Uses the submissions_with_likes view for real like counts.
+ * Ordered by like_count DESC then created_at DESC.
+ */
+async function fetchSubmissions(
+  opts: FetchSubmissionsOptions
+): Promise<Submission[]> {
+  const supabase = await createClient();
+
+  const sort = opts.sort ?? "top";
+
+  // Build query — cast to any to avoid Database-generic "never" inference
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let q: any = (supabase.from("submissions_with_likes") as any).select("*");
+
+  // Apply sort before filters so PostgREST can plan efficiently
+  if (sort === "new") {
+    q = q.order("created_at", { ascending: false });
+  } else {
+    q = q.order("like_count", { ascending: false }).order("created_at", { ascending: false });
+  }
+
+  if (opts.sampleId) q = q.eq("sample_id", opts.sampleId);
+  if (opts.since) q = q.gte("created_at", opts.since);
+  if (opts.limit) q = q.limit(opts.limit);
+
+  const { data: rows } = await q;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const typedRows = (rows as any[]) ?? [];
+  if (typedRows.length === 0) return [];
+
+  // Profiles — one round-trip for all submitters
+  const userIds = [...new Set(typedRows.map((r) => r.user_id as string))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url, bio, created_at, updated_at")
+    .in("id", userIds);
+
+  const profileMap = new Map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((profiles as any[]) ?? []).map((p) => [p.id, p as Profile])
+  );
+
+  // Liked set — one round-trip for current user's likes
+  const likedSet = new Set<string>();
+  if (opts.userId) {
+    const submissionIds = typedRows.map((r) => r.id as string);
+    const { data: userLikes } = await supabase
+      .from("likes")
+      .select("submission_id")
+      .eq("user_id", opts.userId)
+      .in("submission_id", submissionIds);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((userLikes as any[]) ?? []).forEach((l) => likedSet.add(l.submission_id));
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return typedRows.map((row: any) => ({
+    ...(row as Omit<Submission, "profile" | "like_count" | "liked_by_user">),
+    profile: profileMap.get(row.user_id) ?? undefined,
+    like_count: row.like_count ?? 0,
+    liked_by_user: likedSet.has(row.id),
+  })) as Submission[];
+}
+
+/* ─── Public submission queries ──────────────────────────────── */
+
+/**
+ * All submissions for a specific sample, ranked by likes.
+ * Used by the Listen page.
+ */
+export async function getSubmissionsForSample(
+  sampleId: string,
+  userId?: string,
+  sort: SubmissionSort = "top"
+): Promise<Submission[]> {
+  return fetchSubmissions({ sampleId, userId, sort });
+}
+
+/* ─── Archive queries ───────────────────────────────────────── */
+
+export interface ArchiveWinner {
+  username: string;
+  displayName: string;
+  submissionTitle: string | null;
+  likeCount: number;
+}
+
+export interface ArchiveRow {
+  sample: Sample;
+  flipCount: number;
+  /** Top submission by like count. Null when no submissions exist. */
+  winner: ArchiveWinner | null;
+}
+
+/**
+ * Returns all past samples (active_date < today) newest-first, each annotated
+ * with the real flip count and winner (highest-liked submission).
+ *
+ * Uses 3 queries total regardless of how many samples exist (no N+1):
+ *   1. samples — past dates only
+ *   2. submissions_with_likes — for all those sample IDs
+ *   3. profiles — for all unique submitters
+ */
+export async function getArchiveData(): Promise<ArchiveRow[]> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
+
+  // 1. Past samples
+  const { data: samplesData } = await supabase
+    .from("samples")
+    .select("*")
+    .lt("active_date", today)
+    .order("active_date", { ascending: false });
+
+  const samples = (samplesData as Sample[]) ?? [];
+  if (samples.length === 0) return [];
+
+  const sampleIds = samples.map((s) => s.id);
+
+  // 2. All submissions for those samples, pre-sorted by like_count desc
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: subRows } = await (supabase.from("submissions_with_likes") as any)
+    .select("*")
+    .in("sample_id", sampleIds)
+    .order("like_count", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const typedSubRows = (subRows as any[]) ?? [];
+
+  // 3. Profiles for all unique submitters (single round-trip)
+  const userIds = [...new Set(typedSubRows.map((r) => r.user_id as string))];
+  const profileMap = new Map<string, Profile>();
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username, display_name")
+      .in("id", userIds);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((profiles as any[]) ?? []).forEach((p: any) =>
+      profileMap.set(p.id, p as Profile)
+    );
+  }
+
+  // 4. Group submissions by sample_id — rows already sorted so index 0 = winner
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bySample = new Map<string, any[]>();
+  for (const row of typedSubRows) {
+    if (!bySample.has(row.sample_id)) bySample.set(row.sample_id, []);
+    bySample.get(row.sample_id)!.push(row);
+  }
+
+  // 5. Build result preserving sample order
+  return samples.map((sample): ArchiveRow => {
+    const entries = bySample.get(sample.id) ?? [];
+    const flipCount = entries.length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const topSub: any = entries[0] ?? null;
+    const winner: ArchiveWinner | null = topSub
+      ? {
+          username: profileMap.get(topSub.user_id)?.username ?? "unknown",
+          displayName: profileMap.get(topSub.user_id)?.display_name ?? "Unknown",
+          submissionTitle: (topSub.title as string | null) ?? null,
+          likeCount: (topSub.like_count as number) ?? 0,
+        }
+      : null;
+
+    return { sample, flipCount, winner };
+  });
+}
+
+/**
+ * Returns the sample + ranked submissions for a specific archive date.
+ * Used by /explore/[date] detail pages.
+ */
+export async function getArchiveDayData(
+  date: string,
+  currentUserId?: string
+): Promise<{ sample: Sample; submissions: Submission[] } | null> {
+  const supabase = await createClient();
+
+  const { data: sampleData } = await supabase
+    .from("samples")
+    .select("*")
+    .eq("active_date", date)
+    .single();
+
+  if (!sampleData) return null;
+  const sample = sampleData as Sample;
+
+  const submissions = await fetchSubmissions({
+    sampleId: sample.id,
+    sort: "top",
+    userId: currentUserId,
+  });
+
+  return { sample, submissions };
+}
+
+/* ─── Profile queries ───────────────────────────────────────── */
+
+export interface ProfileStats {
+  totalFlips: number;
+  totalLikes: number;
+  /** Consecutive calendar days (UTC) with at least one submission ending today
+   *  or yesterday. Returns 0 if the user hasn't submitted recently. */
+  streak: number;
+}
+
+export interface ProfilePageData {
+  profile: Profile;
+  stats: ProfileStats;
+  submissions: Submission[];
+}
+
+/**
+ * Returns full profile page data for a username, or null if not found.
+ * Single function keeps all profile-related queries in one place.
+ */
+export async function getProfilePageData(
+  username: string,
+  currentUserId?: string
+): Promise<ProfilePageData | null> {
+  const supabase = await createClient();
+
+  // 1. Resolve profile by username
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("username", username)
+    .single();
+
+  if (!profileData) return null;
+  const profile = profileData as Profile;
+
+  // 2. Fetch this user's submissions with like counts (newest first)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: rows } = await (supabase.from("submissions_with_likes") as any)
+    .select("*")
+    .eq("user_id", profile.id)
+    .order("created_at", { ascending: false });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const typedRows = (rows as any[]) ?? [];
+
+  // 3. Stats — computed from the rows we already fetched (no extra queries)
+  const totalFlips = typedRows.length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const totalLikes = typedRows.reduce((sum: number, r: any) => sum + (r.like_count ?? 0), 0);
+  const streak = calcStreak(typedRows.map((r) => r.created_at as string));
+
+  // 4. Liked set for current viewer
+  const likedSet = new Set<string>();
+  if (currentUserId && typedRows.length > 0) {
+    const ids = typedRows.map((r) => r.id as string);
+    const { data: userLikes } = await supabase
+      .from("likes")
+      .select("submission_id")
+      .eq("user_id", currentUserId)
+      .in("submission_id", ids);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((userLikes as any[]) ?? []).forEach((l) => likedSet.add(l.submission_id));
+  }
+
+  // 5. Sample titles (one query for all distinct samples used)
+  const sampleIds = [...new Set(typedRows.map((r) => r.sample_id as string))];
+  const sampleMap = new Map<string, { title: string; active_date: string }>();
+  if (sampleIds.length > 0) {
+    const { data: samples } = await supabase
+      .from("samples")
+      .select("id, title, active_date")
+      .in("id", sampleIds);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((samples as any[]) ?? []).forEach((s: any) =>
+      sampleMap.set(s.id, { title: s.title, active_date: s.active_date })
+    );
+  }
+
+  // 6. Assemble Submission objects
+  const submissions: Submission[] = typedRows.map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (row: any): Submission => ({
+      ...(row as Omit<Submission, "profile" | "like_count" | "liked_by_user" | "sample">),
+      profile,
+      like_count: row.like_count ?? 0,
+      liked_by_user: likedSet.has(row.id),
+      sample: sampleMap.get(row.sample_id),
+    })
+  );
+
+  return { profile, stats: { totalFlips, totalLikes, streak }, submissions };
+}
+
+/**
+ * Counts consecutive calendar days (UTC) that have at least one submission,
+ * starting from the most recent submission and working backwards.
+ * The streak is active only if the user submitted today or yesterday.
+ */
+function calcStreak(createdAts: string[]): number {
+  if (createdAts.length === 0) return 0;
+
+  const toDate = (iso: string) => iso.split("T")[0]; // "YYYY-MM-DD"
+  const addDays = (date: string, n: number) => {
+    const d = new Date(date + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().split("T")[0];
+  };
+
+  const today = toDate(new Date().toISOString());
+  const yesterday = addDays(today, -1);
+
+  // Unique dates, sorted descending
+  const dates = [...new Set(createdAts.map(toDate))].sort().reverse();
+
+  // Streak must start from today or yesterday to be "active"
+  if (dates[0] !== today && dates[0] !== yesterday) return 0;
+
+  let streak = 1;
+  for (let i = 1; i < dates.length; i++) {
+    if (dates[i] === addDays(dates[i - 1], -1)) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+/* ─── Leaderboard queries ────────────────────────────────────── */
+
+export interface ProducerStat {
+  username: string;
+  display_name: string;
+  total_likes: number;
+  total_flips: number;
+}
+
+export interface LeaderboardData {
+  topFlips: Submission[];
+  topProducers: ProducerStat[];
+  period: LeaderboardPeriod;
+}
+
+/**
+ * Top flips (by like count) and top producers (by total likes) for the
+ * given time period.
+ *
+ * Period date filtering applied to submission created_at:
+ *   today   → submissions created today (UTC midnight to now)
+ *   week    → submissions created in the last 7 days
+ *   alltime → all submissions ever
+ *
+ * Like counts are always all-time totals for each submission — we rank
+ * submissions that were created within the period, by their cumulative likes.
+ */
+export async function getLeaderboardData(
+  period: LeaderboardPeriod = "today",
+  userId?: string
+): Promise<LeaderboardData> {
+  const since = periodStartISO(period);
+
+  // Top 10 flips in the period
+  const topFlips = await fetchSubmissions({ since, userId, limit: 10 });
+
+  // Top producers — aggregate likes per user across the same period
+  const supabase = await createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let producerQ: any = (supabase.from("submissions_with_likes") as any).select(
+    "user_id, like_count"
+  );
+  if (since) producerQ = producerQ.gte("created_at", since);
+  const { data: producerRows } = await producerQ;
+
+  const producerMap = new Map<string, { total_likes: number; total_flips: number }>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ((producerRows as any[]) ?? []).forEach((row: any) => {
+    const cur = producerMap.get(row.user_id) ?? { total_likes: 0, total_flips: 0 };
+    producerMap.set(row.user_id, {
+      total_likes: cur.total_likes + (row.like_count ?? 0),
+      total_flips: cur.total_flips + 1,
+    });
+  });
+
+  if (producerMap.size === 0) {
+    return { topFlips, topProducers: [], period };
+  }
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, username, display_name")
+    .in("id", [...producerMap.keys()]);
+
+  const topProducers: ProducerStat[] = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((profiles as any[]) ?? []).map((p: any) => ({
+      username: p.username as string,
+      display_name: p.display_name as string,
+      total_likes: producerMap.get(p.id)?.total_likes ?? 0,
+      total_flips: producerMap.get(p.id)?.total_flips ?? 0,
+    }))
+  )
+    .sort((a, b) => b.total_likes - a.total_likes)
+    .slice(0, 10);
+
+  return { topFlips, topProducers, period };
+}
