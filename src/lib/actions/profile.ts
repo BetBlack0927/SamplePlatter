@@ -58,8 +58,8 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     }
 
     // 5. Update profile
-    const { error: updateError } = await supabase
-      .from("profiles")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase.from("profiles") as any)
       .update(updates)
       .eq("id", user.id);
 
@@ -69,14 +69,14 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     }
 
     // 6. Get username for revalidation
-    const { data: profile } = await supabase
-      .from("profiles")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile } = await (supabase.from("profiles") as any)
       .select("username")
       .eq("id", user.id)
       .single();
 
     if (profile) {
-      revalidatePath(`/profile/${profile.username}`);
+      revalidatePath(`/profile/${(profile as { username: string }).username}`);
     }
 
     return { success: true };
