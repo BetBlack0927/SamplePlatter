@@ -2,12 +2,12 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
-import type { SubmissionWithProfile } from "@/lib/supabase/queries";
+import type { Submission } from "@/types/database";
 import { toggleLike } from "@/lib/actions/likes";
 import { useRouter } from "next/navigation";
 
 interface SwipeCardProps {
-  submission: SubmissionWithProfile;
+  submission: Submission;
   isAuthenticated: boolean;
   onSwipe: (liked: boolean) => void;
 }

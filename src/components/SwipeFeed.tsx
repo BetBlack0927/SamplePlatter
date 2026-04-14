@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { SubmissionWithProfile } from "@/lib/supabase/queries";
+import type { Submission } from "@/types/database";
 import { SwipeCard } from "./SwipeCard";
 import Link from "next/link";
 
 interface SwipeFeedProps {
-  submissions: SubmissionWithProfile[];
+  submissions: Submission[];
   isAuthenticated: boolean;
   hasSample: boolean;
 }
