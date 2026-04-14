@@ -7,7 +7,6 @@ import { useState, useEffect } from "react";
 const NAV_LINKS = [
   { href: "/", label: "Today" },
   { href: "/listen", label: "Listen" },
-  { href: "/explore", label: "Archive" },
   { href: "/leaderboard", label: "Leaderboard" },
 ] as const;
 
@@ -22,7 +21,7 @@ export function NavLinks() {
   }, [pathname]);
 
   return (
-    <nav className="flex items-center gap-1 flex-1">
+    <nav className="flex items-center gap-0.5">
       {NAV_LINKS.map(({ href, label }) => {
         const isRealActive =
           href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -33,11 +32,12 @@ export function NavLinks() {
             key={href}
             href={href}
             onClick={() => setPending(href)}
-            className={`px-3 py-1.5 text-xs font-mono tracking-wide rounded-sm transition-colors ${
+            className={`px-2.5 py-1.5 text-[10px] font-mono tracking-wide transition-colors border-b-2 ${
               active
-                ? "text-accent font-semibold"
-                : "text-text-secondary hover:text-text-primary hover:bg-surface"
+                ? "text-text-primary font-bold border-b-text-primary"
+                : "text-text-secondary hover:text-text-primary hover:bg-surface border-b-transparent"
             }`}
+            style={{ borderRadius: 'var(--radius-minimal)' }}
           >
             {label}
           </Link>

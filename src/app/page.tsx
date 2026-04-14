@@ -27,34 +27,34 @@ export default async function TodayPage() {
   });
 
   return (
-    <div className="flex-1 flex flex-col items-center px-4 pt-8 pb-12">
-      <div className="w-full max-w-xs space-y-4">
+    <div className="flex-1 flex flex-col items-center px-4 sm:px-8 lg:px-12 xl:px-16 pt-6 pb-10">
+      <div className="w-full max-w-lg space-y-3">
 
         {/* Date label */}
-        <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-text-muted text-center">
+        <p className="text-[9px] font-mono tracking-[0.25em] uppercase text-text-muted">
           {todayLabel}
         </p>
 
-        {/* Artwork */}
-        <div className="aspect-square w-full rounded-sm overflow-hidden">
+        {/* Artwork - larger, more dominant */}
+        <div className="aspect-square w-full overflow-hidden" style={{ borderRadius: 'var(--radius-minimal)' }}>
           <CoverArt seed={sample ? `sample-${sample.id}` : `no-sample-${today}`} />
         </div>
 
-        {/* Sample title + artist */}
-        <div className="text-center space-y-0.5">
-          <p className="text-[9px] font-mono tracking-[0.2em] uppercase text-accent">
+        {/* Sample title + artist - stronger hierarchy */}
+        <div className="space-y-1">
+          <p className="text-[8px] font-mono tracking-[0.25em] uppercase text-text-muted">
             Today&apos;s Sample
           </p>
           {sample ? (
             <>
-              <h1 className="text-xl font-bold text-text-primary leading-tight">
+              <h1 className="text-2xl font-bold text-text-primary leading-[1.15] tracking-tight">
                 {sample.title}
               </h1>
-              <p className="text-sm text-text-secondary">{sample.artist}</p>
+              <p className="text-base text-text-secondary font-medium">{sample.artist}</p>
             </>
           ) : (
             <>
-              <h1 className="text-xl font-bold text-text-primary leading-tight">
+              <h1 className="text-2xl font-bold text-text-primary leading-[1.15] tracking-tight">
                 No sample today
               </h1>
               <p className="text-sm text-text-muted">Check back soon</p>
@@ -79,7 +79,7 @@ export default async function TodayPage() {
             ) : (
               <Link
                 href="/sign-in"
-                className="flex-1 flex items-center justify-center gap-2 bg-accent text-black text-xs font-mono font-bold py-2.5 rounded-sm hover:bg-accent/90 active:scale-[0.98] transition-all"
+                className="flex-1 btn btn-primary btn-md uppercase tracking-wider"
               >
                 <UploadIcon />
                 Sign in to Submit
@@ -88,7 +88,7 @@ export default async function TodayPage() {
           ) : (
             <button
               disabled
-              className="flex-1 flex items-center justify-center gap-2 bg-surface border border-border text-text-muted text-xs font-mono font-bold py-2.5 rounded-sm cursor-not-allowed"
+              className="flex-1 btn btn-secondary btn-md cursor-not-allowed"
             >
               No sample today
             </button>
@@ -102,92 +102,40 @@ export default async function TodayPage() {
           )}
         </div>
 
+        {/* Minimal footer - countdown + listen link */}
+        {sample && (
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-mono uppercase tracking-[0.22em] text-text-muted">
+                Closes in
+              </span>
+              <span className="text-[11px] font-mono text-text-secondary tabular-nums font-semibold">
+                <CountdownLabel />
+              </span>
+            </div>
+            <Link
+              href="/listen"
+              className="text-[10px] font-mono font-bold text-text-primary hover:text-white transition-colors uppercase tracking-wide underline underline-offset-2"
+            >
+              Listen →
+            </Link>
+          </div>
+        )}
+
         {/* Session indicator */}
         {username && (
-          <p className="text-center text-[10px] font-mono text-text-muted">
+          <p className="text-center text-[9px] font-mono text-text-muted pt-1">
             Signed in as{" "}
             <Link
               href={`/profile/${username}`}
-              className="text-text-secondary hover:text-accent transition-colors"
+              className="text-text-secondary hover:text-text-primary transition-colors font-semibold"
             >
               @{username}
             </Link>
           </p>
         )}
 
-        {/* Prompt details */}
-        {sample && (
-          <div className="border border-border rounded-sm overflow-hidden">
-            <div className="px-3 py-2 border-b border-border">
-              <span className="text-[9px] font-mono uppercase tracking-[0.18em] text-text-muted">
-                Prompt Details
-              </span>
-            </div>
-            <div className="px-3 py-2.5 grid grid-cols-2 gap-x-4 gap-y-2.5">
-              {sample.tags?.length > 0 && (
-                <MetaRow label="Genre" value={sample.tags.join(" / ")} />
-              )}
-              {sample.bpm && (
-                <MetaRow label="BPM" value={String(sample.bpm)} mono />
-              )}
-              {sample.key && <MetaRow label="Key" value={sample.key} mono />}
-            </div>
-            <div className="px-3 py-2 border-t border-border flex items-center justify-between">
-              <span className="text-[11px] text-text-secondary">
-                {/* flip count will come from real data once submissions query is wired */}
-                Flips submitted today
-              </span>
-              <Link
-                href="/listen"
-                className="text-[11px] font-mono text-accent hover:text-accent/80 transition-colors"
-              >
-                Listen →
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Countdown */}
-        {sample && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
-                Closes in
-              </span>
-              <span className="text-xs font-mono text-text-secondary tabular-nums">
-                <CountdownLabel />
-              </span>
-            </div>
-            <span className="text-[10px] font-mono text-text-muted">
-              resets midnight UTC
-            </span>
-          </div>
-        )}
-
       </div>
-    </div>
-  );
-}
-
-/* ─── MetaRow ────────────────────────────────────────────────── */
-
-function MetaRow({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div>
-      <p className="text-[9px] font-mono uppercase tracking-widest text-text-muted mb-0.5">
-        {label}
-      </p>
-      <p className={`text-xs text-text-primary ${mono ? "font-mono" : ""}`}>
-        {value}
-      </p>
     </div>
   );
 }

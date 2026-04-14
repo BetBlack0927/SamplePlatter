@@ -16,8 +16,8 @@ export function PageContainer({
   return (
     <main
       className={`
-        mx-auto w-full max-w-5xl
-        ${flush ? "" : "px-4 sm:px-6"}
+        w-full max-w-[1600px] mx-auto
+        ${flush ? "" : "px-4 sm:px-8 lg:px-12 xl:px-16"}
         py-10
         ${className}
       `}

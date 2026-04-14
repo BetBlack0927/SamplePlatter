@@ -57,13 +57,13 @@ export function DownloadButton({ audioUrl, storagePath, title }: DownloadButtonP
     <button
       onClick={handleDownload}
       disabled={status === "loading"}
-      className="flex items-center gap-1.5 text-text-muted hover:text-text-secondary text-[11px] font-mono px-3 py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="btn btn-secondary btn-md uppercase tracking-wider shrink-0"
       title={`Download ${title}`}
     >
       {status === "loading" ? (
         <>
           <SpinnerIcon />
-          <span>Downloading…</span>
+          <span>Downloading</span>
         </>
       ) : status === "done" ? (
         <>
@@ -118,7 +118,7 @@ function SpinnerIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-accent">
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-text-primary">
       <polyline points="2 6 5 9 10 3" />
     </svg>
   );

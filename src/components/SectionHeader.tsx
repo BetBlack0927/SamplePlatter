@@ -9,13 +9,13 @@ interface SectionHeaderProps {
  */
 export function SectionHeader({ title, count, action }: SectionHeaderProps) {
   return (
-    <div className="flex items-center justify-between gap-4 mb-6">
-      <div className="flex items-center gap-3">
-        <h2 className="text-xs font-mono font-semibold tracking-[0.15em] uppercase text-text-secondary">
+    <div className="flex items-center justify-between gap-4 mb-3 pb-1.5 border-b border-border">
+      <div className="flex items-center gap-2.5">
+        <h2 className="text-[10px] font-mono font-bold tracking-[0.22em] uppercase text-text-muted">
           {title}
         </h2>
         {count !== undefined && (
-          <span className="text-xs font-mono text-text-muted bg-surface border border-border rounded px-1.5 py-0.5">
+          <span className="text-[9px] font-mono text-text-muted bg-surface border border-border px-1.5 py-0.5 tabular-nums font-semibold" style={{ borderRadius: 'var(--radius-minimal)' }}>
             {count}
           </span>
         )}

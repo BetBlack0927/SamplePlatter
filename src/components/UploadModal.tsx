@@ -182,18 +182,18 @@ export function UploadModal({
         aria-label="Upload your flip"
         className="fixed z-50 inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center p-0 sm:p-4"
       >
-        <div className="w-full sm:max-w-md bg-background border border-border sm:rounded-sm shadow-2xl">
+        <div className="w-full sm:max-w-md bg-background border border-border shadow-2xl" style={{ borderRadius: 'var(--radius-minimal)' }}>
           {stage === "success" ? (
             <SuccessView />
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
+              <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border bg-surface">
                 <div>
-                  <h2 className="text-sm font-bold text-text-primary">
+                  <h2 className="text-xs font-bold text-text-primary uppercase tracking-wide">
                     Upload Your Flip
                   </h2>
-                  <p className="text-[10px] font-mono text-text-muted mt-0.5">
+                  <p className="text-[9px] font-mono text-text-muted mt-0.5">
                     MP3 or WAV · max 50 MB
                   </p>
                 </div>
@@ -201,18 +201,19 @@ export function UploadModal({
                   type="button"
                   onClick={onClose}
                   disabled={stage === "uploading"}
-                  className="w-7 h-7 flex items-center justify-center rounded-sm text-text-muted hover:text-text-primary hover:bg-surface transition-colors disabled:opacity-30"
+                  className="w-6 h-6 flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-30"
+                  style={{ borderRadius: 'var(--radius-minimal)' }}
                   aria-label="Close"
                 >
                   <CloseIcon />
                 </button>
               </div>
 
-              <div className="px-5 py-5 space-y-4">
+              <div className="px-4 py-4 space-y-3">
                 {/* Error */}
                 {error && (
-                  <div className="px-3 py-2.5 bg-error/10 border border-error/30 rounded-sm">
-                    <p className="text-xs font-mono text-error">{error}</p>
+                  <div className="px-3 py-2 bg-error/10 border border-error/30" style={{ borderRadius: 'var(--radius-minimal)' }}>
+                    <p className="text-[10px] font-mono text-error">{error}</p>
                   </div>
                 )}
 
@@ -223,24 +224,25 @@ export function UploadModal({
                   onDragLeave={onDragLeave}
                   onDrop={onDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`relative flex flex-col items-center justify-center gap-2 h-32 border-2 border-dashed rounded-sm cursor-pointer transition-all duration-150 select-none ${
+                  className={`relative flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed cursor-pointer transition-all duration-150 select-none ${
                     isDragging
-                      ? "border-accent/60 bg-accent/5"
+                      ? "border-border-focus bg-surface-elevated"
                       : file
-                      ? "border-accent/40 bg-surface"
+                      ? "border-border-focus bg-surface"
                       : "border-border hover:border-border-focus hover:bg-surface"
                   }`}
+                  style={{ borderRadius: 'var(--radius-minimal)' }}
                 >
                   {file ? (
                     <>
                       <FileCheckIcon />
-                      <p className="text-xs font-mono text-text-primary text-center px-4 truncate max-w-full">
+                      <p className="text-[10px] font-mono text-text-primary text-center px-4 truncate max-w-full font-semibold">
                         {file.name}
                       </p>
-                      <p className="text-[10px] font-mono text-text-muted">
+                      <p className="text-[9px] font-mono text-text-muted">
                         {(file.size / (1024 * 1024)).toFixed(1)} MB ·{" "}
                         <span
-                          className="text-accent hover:underline"
+                          className="text-text-primary hover:text-white font-semibold cursor-pointer underline underline-offset-2"
                           onClick={(e) => {
                             e.stopPropagation();
                             setFile(null);
@@ -255,9 +257,9 @@ export function UploadModal({
                   ) : (
                     <>
                       <AudioIcon />
-                      <p className="text-xs font-mono text-text-secondary text-center">
+                      <p className="text-[10px] font-mono text-text-secondary text-center">
                         Drop file or{" "}
-                        <span className="text-accent">click to browse</span>
+                        <span className="text-text-primary font-semibold">click to browse</span>
                       </p>
                     </>
                   )}
@@ -275,10 +277,10 @@ export function UploadModal({
                 </div>
 
                 {/* Title input */}
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <label
                     htmlFor="flip-title"
-                    className="block text-[10px] font-mono uppercase tracking-widest text-text-muted"
+                    className="block text-[8px] font-mono uppercase tracking-[0.22em] text-text-muted font-semibold"
                   >
                     Track Title
                   </label>
@@ -289,22 +291,23 @@ export function UploadModal({
                     onChange={(e) => setTitle(e.target.value)}
                     maxLength={100}
                     placeholder="Name your flip"
-                    className="w-full bg-surface border border-border rounded-sm px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
+                    className="w-full bg-surface border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
+                    style={{ borderRadius: 'var(--radius-minimal)' }}
                   />
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 px-5 pb-5">
+              <div className="flex items-center gap-2 px-4 pb-4">
                 <button
                   type="submit"
                   disabled={stage === "uploading" || !file}
-                  className="flex-1 flex items-center justify-center gap-2 bg-accent text-black text-xs font-mono font-bold py-2.5 rounded-sm hover:bg-accent/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                  className="flex-1 btn btn-primary btn-md uppercase tracking-wider"
                 >
                   {stage === "uploading" ? (
                     <>
                       <SpinnerIcon />
-                      Uploading…
+                      Uploading
                     </>
                   ) : (
                     <>
@@ -317,7 +320,7 @@ export function UploadModal({
                   type="button"
                   onClick={onClose}
                   disabled={stage === "uploading"}
-                  className="px-4 py-2.5 text-xs font-mono text-text-muted hover:text-text-secondary border border-border hover:border-border-focus rounded-sm transition-colors disabled:opacity-30"
+                  className="btn btn-secondary btn-md uppercase tracking-wider disabled:opacity-30"
                 >
                   Cancel
                 </button>
@@ -334,13 +337,13 @@ export function UploadModal({
 
 function SuccessView() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-12">
-      <div className="w-12 h-12 rounded-sm bg-accent/10 border border-accent/30 flex items-center justify-center">
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-10">
+      <div className="w-11 h-11 bg-surface-elevated border border-border-focus flex items-center justify-center" style={{ borderRadius: 'var(--radius-minimal)' }}>
         <CheckIcon />
       </div>
       <div className="text-center">
-        <p className="text-sm font-bold text-text-primary">Flip submitted</p>
-        <p className="text-xs font-mono text-text-muted mt-1">
+        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Flip submitted</p>
+        <p className="text-[10px] font-mono text-text-muted mt-1">
           Your track is live on the Listen page.
         </p>
       </div>
@@ -370,7 +373,7 @@ function AudioIcon() {
 
 function FileCheckIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" className="text-accent">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" className="text-text-secondary">
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
       <polyline points="14 2 14 8 20 8" />
       <polyline points="9 15 11 17 15 13" />
@@ -388,7 +391,7 @@ function UploadIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-primary">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );

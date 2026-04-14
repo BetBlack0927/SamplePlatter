@@ -79,7 +79,7 @@ export function SubmissionCard({
   };
 
   return (
-    <div className="group flex items-center gap-3 px-3 py-3 bg-surface border border-border hover:border-border-focus hover:bg-surface-elevated transition-all duration-100 rounded-sm">
+    <div className="group flex items-center gap-2.5 px-2.5 py-2 bg-surface border-l-2 border-l-transparent border-y border-y-transparent hover:border-l-accent/40 hover:border-y-border hover:bg-surface-elevated transition-all duration-100" style={{ borderRadius: 'var(--radius-minimal)' }}>
 
       {/* Audio element */}
       {hasAudio && (
@@ -113,12 +113,12 @@ export function SubmissionCard({
       )}
 
       {/* Rank */}
-      <span className="w-6 shrink-0 text-right text-[11px] font-mono text-text-muted select-none">
+      <span className="w-5 shrink-0 text-right text-[10px] font-mono text-text-muted select-none tabular-nums font-semibold">
         {rank ?? "—"}
       </span>
 
       {/* Avatar */}
-      <div className="w-7 h-7 rounded-sm bg-surface-elevated border border-border shrink-0 overflow-hidden flex items-center justify-center">
+      <div className="w-6 h-6 bg-surface-elevated border border-border shrink-0 overflow-hidden flex items-center justify-center" style={{ borderRadius: 'var(--radius-minimal)' }}>
         {profile?.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -127,22 +127,22 @@ export function SubmissionCard({
             className="w-full h-full object-cover"
           />
         ) : (
-          <span className="text-[9px] font-mono font-semibold text-text-muted leading-none">
+          <span className="text-[8px] font-mono font-bold text-text-muted leading-none">
             {profile?.username?.slice(0, 2).toUpperCase() ?? "??"}
           </span>
         )}
       </div>
 
       {/* Producer + title */}
-      <div className="w-36 shrink-0 min-w-0">
+      <div className="w-40 lg:w-44 shrink-0 min-w-0">
         <Link
           href={`/profile/${profile?.username ?? "#"}`}
-          className="block text-sm font-medium text-text-primary hover:text-accent transition-colors truncate leading-tight"
+          className="block text-xs font-semibold text-text-primary hover:text-white transition-colors truncate leading-tight"
           onClick={(e) => e.stopPropagation()}
         >
           {profile?.display_name ?? "Unknown"}
         </Link>
-        <p className="text-[11px] text-text-secondary truncate leading-tight mt-0.5">
+        <p className="text-[10px] text-text-secondary truncate leading-tight mt-0.5">
           {submission.title ?? (
             <span className="italic text-text-muted">untitled</span>
           )}
@@ -151,7 +151,7 @@ export function SubmissionCard({
 
       {/* Waveform — click to play/pause, fills as track progresses */}
       <div
-        className="flex-1 min-w-0 h-7 flex items-center gap-px overflow-hidden cursor-pointer"
+        className="flex-1 min-w-0 h-6 flex items-center gap-px overflow-hidden cursor-pointer"
         onClick={togglePlay}
         title={hasAudio ? (isPlaying ? "Pause" : "Play") : undefined}
       >
@@ -161,27 +161,27 @@ export function SubmissionCard({
           return (
             <div
               key={i}
-              className={`flex-1 rounded-full transition-colors duration-75 ${
+              className={`flex-1 transition-colors duration-75 ${
                 played
-                  ? "bg-accent"
+                  ? "bg-text-primary"
                   : isPlaying
                   ? "bg-border-focus"
-                  : "bg-border-focus group-hover:bg-text-muted"
+                  : "bg-border group-hover:bg-border-focus"
               }`}
-              style={{ height: `${h}%` }}
+              style={{ height: `${h}%`, borderRadius: 'var(--radius-minimal)' }}
             />
           );
         })}
       </div>
 
       {/* Stats */}
-      <div className="hidden sm:flex items-center gap-3 shrink-0">
+      <div className="hidden sm:flex items-center gap-2.5 shrink-0">
         {duration && (
-          <span className="text-[11px] font-mono text-text-muted w-8 text-right tabular-nums">
+          <span className="text-[10px] font-mono text-text-muted w-8 text-right tabular-nums font-semibold">
             {duration}
           </span>
         )}
-        <span className="text-[11px] font-mono text-text-secondary flex items-center gap-1">
+        <span className="text-[10px] font-mono text-text-secondary flex items-center gap-1 font-semibold">
           <EyeIcon />
           {submission.play_count}
         </span>
@@ -195,7 +195,7 @@ export function SubmissionCard({
       </div>
 
       {/* Time */}
-      <span className="hidden lg:block text-[11px] font-mono text-text-secondary w-12 text-right shrink-0 tabular-nums">
+      <span className="hidden lg:block text-[10px] font-mono text-text-muted w-10 text-right shrink-0 tabular-nums font-semibold">
         {timeAgo}
       </span>
 
@@ -203,11 +203,12 @@ export function SubmissionCard({
       <button
         onClick={togglePlay}
         disabled={!hasAudio}
-        className={`w-7 h-7 shrink-0 rounded-sm border flex items-center justify-center transition-all duration-100 active:scale-95 ${
+        className={`w-6 h-6 shrink-0 border flex items-center justify-center transition-all duration-100 active:scale-95 ${
           isPlaying
-            ? "border-accent/60 bg-accent-dim text-accent"
-            : "border-border-focus bg-surface-elevated text-text-secondary hover:text-accent hover:border-accent/50 hover:bg-accent-dim"
+            ? "border-text-primary/60 bg-text-primary/10 text-text-primary"
+            : "border-border bg-surface-elevated text-text-secondary hover:text-text-primary hover:border-border-focus hover:bg-surface-elevated"
         } disabled:opacity-30 disabled:cursor-not-allowed`}
+        style={{ borderRadius: 'var(--radius-minimal)' }}
         aria-label={isPlaying ? "Pause" : "Play"}
       >
         {isPlaying ? <PauseIcon /> : <PlayIcon />}

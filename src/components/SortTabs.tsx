@@ -29,17 +29,18 @@ export function SortTabs({ options, current, className }: SortTabsProps) {
 
   return (
     <div
-      className={`flex gap-px bg-surface border border-border rounded-sm overflow-hidden shrink-0 ${className ?? ""}`}
+      className={`flex gap-0.5 bg-surface border border-border overflow-hidden shrink-0 ${className ?? ""}`}
+      style={{ borderRadius: 'var(--radius-minimal)' }}
     >
       {options.map(({ id, label, href }) => (
         <Link
           key={id}
           href={href}
           onClick={() => setActive(id)}
-          className={`text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 transition-colors ${
+          className={`text-[9px] font-mono uppercase tracking-[0.22em] px-2.5 py-1.5 transition-colors font-semibold ${
             active === id
-              ? "bg-surface-elevated text-text-primary"
-              : "text-text-muted hover:text-text-secondary"
+              ? "bg-text-primary text-black"
+              : "text-text-muted hover:text-text-secondary hover:bg-surface-elevated"
           }`}
         >
           {label}

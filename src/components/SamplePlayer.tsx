@@ -46,7 +46,7 @@ export function SamplePlayer({ audioUrl }: SamplePlayerProps) {
   };
 
   return (
-    <div className="bg-surface border border-border rounded-sm p-3">
+    <div className="bg-surface border border-border p-3" style={{ borderRadius: 'var(--radius-minimal)' }}>
       <audio
         ref={audioRef}
         src={audioUrl}
@@ -62,7 +62,8 @@ export function SamplePlayer({ audioUrl }: SamplePlayerProps) {
         {/* Play / Pause */}
         <button
           onClick={togglePlay}
-          className="w-9 h-9 rounded-sm bg-accent flex items-center justify-center shrink-0 hover:bg-accent/90 active:scale-95 transition-all"
+          className="w-9 h-9 bg-text-primary flex items-center justify-center shrink-0 hover:bg-white active:scale-95 transition-all"
+          style={{ borderRadius: 'var(--radius-minimal)' }}
           aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? <PauseIcon /> : <PlayIcon />}
@@ -70,7 +71,7 @@ export function SamplePlayer({ audioUrl }: SamplePlayerProps) {
 
         {/* Seek bar */}
         <div
-          className="flex-1 h-6 flex items-center gap-px overflow-hidden cursor-pointer relative"
+          className="flex-1 h-7 flex items-center gap-px overflow-hidden cursor-pointer relative"
           onClick={seek}
           title="Seek"
         >
@@ -80,20 +81,20 @@ export function SamplePlayer({ audioUrl }: SamplePlayerProps) {
             return (
               <div
                 key={i}
-                className={`flex-1 rounded-full transition-colors duration-75 ${
-                  played ? "bg-accent/70" : "bg-border-focus"
+                className={`flex-1 transition-colors duration-75 ${
+                  played ? "bg-text-primary" : "bg-border-focus"
                 }`}
-                style={{ height: `${h}%` }}
+                style={{ height: `${h}%`, borderRadius: 'var(--radius-minimal)' }}
               />
             );
           })}
         </div>
 
         {/* Time */}
-        <span className="text-[11px] font-mono text-text-muted shrink-0 tabular-nums w-8 text-right">
+        <span className="text-[10px] font-mono text-text-secondary font-semibold shrink-0 tabular-nums w-10 text-right">
           {duration > 0
             ? formatTime(isPlaying || currentTime > 0 ? currentTime : duration)
-            : "—"}
+            : "—:—"}
         </span>
       </div>
     </div>

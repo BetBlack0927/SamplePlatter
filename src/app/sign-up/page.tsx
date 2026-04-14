@@ -13,19 +13,22 @@ export default async function SignUpPage() {
   if (session) redirect("/");
 
   return (
-    <div className="flex-1 flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-sm space-y-8">
+    <div className="flex-1 flex items-center justify-center px-4 sm:px-8 lg:px-12 xl:px-16 py-12">
+      <div className="w-full max-w-md space-y-6">
         {/* Wordmark */}
-        <div className="space-y-1">
-          <div className="w-8 h-8 bg-accent rounded-sm flex items-center justify-center mb-4">
-            <span className="text-xs font-mono font-black text-black">SP</span>
+        <div className="space-y-3">
+          <div className="text-base text-text-primary tracking-[-0.02em] leading-none">
+            <span className="font-semibold">Sample</span>
+            <span className="font-normal"> Platter</span>
           </div>
-          <h1 className="text-xl font-bold text-text-primary">
-            Join Sample Platter
-          </h1>
-          <p className="text-sm text-text-secondary">
-            A new sample drops every day. Flip it.
-          </p>
+          <div>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">
+              Join Sample Platter
+            </h1>
+            <p className="text-xs text-text-secondary mt-1">
+              A new sample drops every day. Flip it.
+            </p>
+          </div>
         </div>
 
         <SignUpForm />

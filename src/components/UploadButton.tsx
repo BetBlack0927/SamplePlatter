@@ -20,7 +20,7 @@ export function UploadButton({ sampleId, userId, activeDate }: UploadButtonProps
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex-1 flex items-center justify-center gap-2 bg-accent text-black text-xs font-mono font-bold py-2.5 rounded-sm hover:bg-accent/90 active:scale-[0.98] transition-all"
+        className="flex-1 btn btn-primary btn-md uppercase tracking-wider"
       >
         <UploadIcon />
         Upload Your Flip
