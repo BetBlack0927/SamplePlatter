@@ -49,18 +49,22 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
     setIsExiting(true);
     setExitDirection(direction);
 
-    // Save review and like actions
+    // OPTIMISTIC: Notify parent immediately (don't wait for save)
+    // This makes the UI feel instant
+    setTimeout(() => {
+      onSwipe(liked, true);
+    }, 50); // Small delay for smooth animation start
+
+    // Save review and like actions in background
     startTransition(async () => {
       try {
         // Save review (always do this for both like and skip)
         const reviewResult = await saveReview(submission.id, action);
         
         if (!reviewResult.success) {
-          setError(reviewResult.error || "Failed to save review");
-          setIsExiting(false);
-          setExitDirection(null);
-          onSwipe(liked, false);
-          return;
+          console.error("Failed to save review:", reviewResult.error);
+          // Don't block UI - save failed but user already moved on
+          // Could show a toast notification here if needed
         }
 
         // If liked, also save to likes table
@@ -68,17 +72,11 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
           await toggleLike(submission.id);
         }
 
-        // Wait for animation to complete, then notify parent
-        setTimeout(() => {
-          onSwipe(liked, true);
-          router.refresh();
-        }, 350);
+        // Refresh in background to sync state
+        router.refresh();
       } catch (err) {
         console.error("Swipe action failed:", err);
-        setError("Something went wrong. Please try again.");
-        setIsExiting(false);
-        setExitDirection(null);
-        onSwipe(liked, false);
+        // Don't block UI - save failed but user already moved on
       }
     });
   };

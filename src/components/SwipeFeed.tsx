@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Submission } from "@/types/database";
 import { SwipeCard } from "./SwipeCard";
@@ -22,38 +22,70 @@ export function SwipeFeed({
   sampleId,
 }: SwipeFeedProps) {
   const router = useRouter();
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [localQueue, setLocalQueue] = useState(submissions);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
+  const [shouldRefetch, setShouldRefetch] = useState(false);
+  const isRefetchingRef = useRef(false);
 
   // Update local queue when submissions prop changes
   useEffect(() => {
     setLocalQueue(submissions);
-    setCurrentIndex(0);
+    setIsAdvancing(false);
+    isRefetchingRef.current = false;
   }, [submissions]);
+
+  // Trigger refetch when queue becomes empty
+  useEffect(() => {
+    if (shouldRefetch && !isRefetchingRef.current) {
+      isRefetchingRef.current = true;
+      setShouldRefetch(false);
+      router.refresh();
+    }
+  }, [shouldRefetch, router]);
 
   const handleSwipe = async (liked: boolean, success: boolean) => {
     // Only advance if the action succeeded
     if (success) {
-      const newIndex = currentIndex + 1;
+      // Check if there's a next card in the queue
+      const hasNextCard = localQueue.length > 1;
       
-      // Check if we just reviewed the last card in local queue
-      if (newIndex >= localQueue.length) {
-        // Refresh from server to check if more submissions appeared
-        setIsRefreshing(true);
-        router.refresh();
-        // Router refresh will re-fetch and update submissions prop
-        // useEffect will reset the queue
+      if (hasNextCard) {
+        // OPTIMISTIC: Immediately remove current card and show next
+        setIsAdvancing(true);
+        
+        // Use setTimeout to ensure smooth transition
+        setTimeout(() => {
+          setLocalQueue(prev => prev.slice(1));
+          setIsAdvancing(false);
+        }, 50); // Small delay for animation smoothness
+        
       } else {
-        // More cards in local queue, advance normally
-        setCurrentIndex(newIndex);
+        // Last card in queue - trigger refetch after animation
+        setIsAdvancing(true);
+        
+        setTimeout(() => {
+          setLocalQueue([]);
+          setShouldRefetch(true);
+          setIsAdvancing(false);
+        }, 350); // Wait for exit animation to complete
       }
     }
     // If failed, stay on current card (user can retry)
   };
 
-  const currentSubmission = localQueue[currentIndex];
-  const hasMore = currentIndex < localQueue.length - 1;
+  const currentSubmission = localQueue[0]; // Always use first item (we slice the queue)
+  const hasMore = localQueue.length > 1;
+
+  // NEVER show empty state during transitions
+  if (isAdvancing) {
+    // Keep UI stable during card transition
+    // Don't render anything - let exit animation complete
+    return (
+      <div className="py-12">
+        <div className="w-full max-w-md mx-auto min-h-[500px]" />
+      </div>
+    );
+  }
 
   // Determine empty state based on total submissions vs unreviewed
   const noSubmissionsExist = totalSubmissionCount === 0;
@@ -101,7 +133,8 @@ export function SwipeFeed({
   }
 
   // State B: Submissions exist, but user has reviewed them all
-  if (allReviewed || (localQueue.length > 0 && !currentSubmission)) {
+  // ONLY show if truly empty (not during transition)
+  if (allReviewed && !isAdvancing) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <div className="space-y-4 max-w-sm">
@@ -139,19 +172,8 @@ export function SwipeFeed({
     );
   }
 
-  // State C: Show loading while refreshing
-  if (isRefreshing) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="space-y-3 max-w-sm">
-          <p className="text-sm text-text-secondary">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   // State C: Unreviewed submissions exist, show current card
-  if (!showCard) {
+  if (!showCard && !isAdvancing) {
     // Safety fallback - shouldn't reach here
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
