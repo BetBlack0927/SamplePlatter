@@ -4,7 +4,7 @@ import { SwipeFeed } from "@/components/SwipeFeed";
 import {
   getCurrentSession,
   getTodaySample,
-  getSubmissionsForSample,
+  getUnreviewedSubmissions,
 } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = {
@@ -19,9 +19,10 @@ export default async function ListenPage() {
 
   const isAuthenticated = !!session;
 
-  // Get submissions sorted by "new" for discovery feed
+  // Get unreviewed submissions for swipe queue
+  // Excludes already-reviewed and user's own submissions
   const submissions = sample
-    ? await getSubmissionsForSample(sample.id, session?.user.id, "new")
+    ? await getUnreviewedSubmissions(sample.id, session?.user.id, true)
     : [];
 
   const today = new Date().toLocaleDateString("en-US", {

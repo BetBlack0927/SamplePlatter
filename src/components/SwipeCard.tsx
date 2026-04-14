@@ -4,12 +4,13 @@ import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Submission } from "@/types/database";
 import { toggleLike } from "@/lib/actions/likes";
+import { saveReview } from "@/lib/actions/reviews";
 import { useRouter } from "next/navigation";
 
 interface SwipeCardProps {
   submission: Submission;
   isAuthenticated: boolean;
-  onSwipe: (liked: boolean) => void;
+  onSwipe: (liked: boolean, success: boolean) => void;
 }
 
 export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardProps) {
@@ -22,6 +23,7 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
   const [duration, setDuration] = useState(0);
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -29,9 +31,13 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
   const hasAudio = !!submission.audio_url;
 
   const handleSwipe = async (direction: "left" | "right") => {
-    if (isExiting) return;
+    if (isExiting || isPending) return;
 
     const liked = direction === "right";
+    const action = liked ? "liked" : "skipped";
+
+    // Clear any previous errors
+    setError(null);
 
     // Pause audio if playing
     if (audioRef.current && isPlaying) {
@@ -43,19 +49,38 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
     setIsExiting(true);
     setExitDirection(direction);
 
-    // If liked and authenticated, trigger like action
-    if (liked && isAuthenticated) {
-      startTransition(() => {
-        toggleLike(submission.id).then(() => {
-          router.refresh();
-        });
-      });
-    }
+    // Save review and like actions
+    startTransition(async () => {
+      try {
+        // Save review (always do this for both like and skip)
+        const reviewResult = await saveReview(submission.id, action);
+        
+        if (!reviewResult.success) {
+          setError(reviewResult.error || "Failed to save review");
+          setIsExiting(false);
+          setExitDirection(null);
+          onSwipe(liked, false);
+          return;
+        }
 
-    // Wait for animation to complete, then notify parent
-    setTimeout(() => {
-      onSwipe(liked);
-    }, 350);
+        // If liked, also save to likes table
+        if (liked && isAuthenticated) {
+          await toggleLike(submission.id);
+        }
+
+        // Wait for animation to complete, then notify parent
+        setTimeout(() => {
+          onSwipe(liked, true);
+          router.refresh();
+        }, 350);
+      } catch (err) {
+        console.error("Swipe action failed:", err);
+        setError("Something went wrong. Please try again.");
+        setIsExiting(false);
+        setExitDirection(null);
+        onSwipe(liked, false);
+      }
+    });
   };
 
   const togglePlay = () => {
@@ -284,12 +309,19 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
         </div>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="mt-6 px-4 py-3 bg-error/10 border border-error/20 text-center" style={{ borderRadius: "var(--radius-minimal)" }}>
+          <p className="text-xs text-error font-semibold">{error}</p>
+        </div>
+      )}
+
       {/* Action Buttons - Balanced */}
       <div className="flex items-center justify-center gap-8 mt-10">
         {/* Skip Button */}
         <button
           onClick={() => handleSwipe("left")}
-          disabled={isExiting}
+          disabled={isExiting || isPending}
           className="w-14 h-14 rounded-full border border-border bg-surface flex items-center justify-center text-text-muted hover:text-text-primary hover:border-border-focus transition-all active:scale-95 disabled:opacity-40"
           aria-label="Skip"
         >
@@ -299,7 +331,7 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
         {/* Like Button - Balanced size */}
         <button
           onClick={() => handleSwipe("right")}
-          disabled={isExiting || !isAuthenticated}
+          disabled={isExiting || isPending || !isAuthenticated}
           className="w-14 h-14 rounded-full border border-border bg-surface flex items-center justify-center text-text-primary hover:text-white hover:border-text-primary/40 hover:bg-surface-elevated transition-all active:scale-95 disabled:opacity-40"
           aria-label="Like"
         >

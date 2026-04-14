@@ -182,6 +182,87 @@ export async function getSubmissionsForSample(
   return fetchSubmissions({ sampleId, userId, sort });
 }
 
+/**
+ * Gets unreviewed submissions for the Listen/Swipe page.
+ * Excludes submissions the user has already reviewed (liked or skipped).
+ * Optionally excludes the user's own submissions.
+ */
+export async function getUnreviewedSubmissions(
+  sampleId: string,
+  userId?: string,
+  excludeOwnSubmissions: boolean = true
+): Promise<Submission[]> {
+  const supabase = await createClient();
+
+  // Get all reviewed submission IDs for this user
+  const reviewedIds: string[] = [];
+  if (userId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: reviews } = await (supabase.from("submission_reviews") as any)
+      .select("submission_id")
+      .eq("user_id", userId);
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((reviews as any[]) ?? []).forEach((r) => reviewedIds.push(r.submission_id));
+  }
+
+  // Fetch all submissions for the sample
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let q: any = (supabase.from("submissions_with_likes") as any)
+    .select("*")
+    .eq("sample_id", sampleId)
+    .order("created_at", { ascending: false });
+
+  // Exclude user's own submissions if requested
+  if (userId && excludeOwnSubmissions) {
+    q = q.neq("user_id", userId);
+  }
+
+  const { data: rows } = await q;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const typedRows = (rows as any[]) ?? [];
+
+  // Filter out reviewed submissions
+  const unreviewedRows = typedRows.filter(
+    (r) => !reviewedIds.includes(r.id as string)
+  );
+
+  if (unreviewedRows.length === 0) return [];
+
+  // Fetch profiles for all submitters
+  const userIds = [...new Set(unreviewedRows.map((r) => r.user_id as string))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url, bio, created_at, updated_at")
+    .in("id", userIds);
+
+  const profileMap = new Map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((profiles as any[]) ?? []).map((p) => [p.id, p as Profile])
+  );
+
+  // Fetch liked set for current user
+  const likedSet = new Set<string>();
+  if (userId) {
+    const submissionIds = unreviewedRows.map((r) => r.id as string);
+    const { data: userLikes } = await supabase
+      .from("likes")
+      .select("submission_id")
+      .eq("user_id", userId)
+      .in("submission_id", submissionIds);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((userLikes as any[]) ?? []).forEach((l) => likedSet.add(l.submission_id));
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return unreviewedRows.map((row: any) => ({
+    ...(row as Omit<Submission, "profile" | "like_count" | "liked_by_user">),
+    profile: profileMap.get(row.user_id) ?? undefined,
+    like_count: row.like_count ?? 0,
+    liked_by_user: likedSet.has(row.id),
+  })) as Submission[];
+}
+
 /* ─── Profile queries ───────────────────────────────────────── */
 
 export interface ProfileStats {

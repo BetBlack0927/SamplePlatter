@@ -15,9 +15,13 @@ export function SwipeFeed({ submissions, isAuthenticated, hasSample }: SwipeFeed
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewedCount, setViewedCount] = useState(0);
 
-  const handleSwipe = (liked: boolean) => {
-    setViewedCount((prev) => prev + 1);
-    setCurrentIndex((prev) => prev + 1);
+  const handleSwipe = (liked: boolean, success: boolean) => {
+    // Only advance if the action succeeded
+    if (success) {
+      setViewedCount((prev) => prev + 1);
+      setCurrentIndex((prev) => prev + 1);
+    }
+    // If failed, stay on current card (user can retry)
   };
 
   const currentSubmission = submissions[currentIndex];
@@ -55,25 +59,38 @@ export function SwipeFeed({ submissions, isAuthenticated, hasSample }: SwipeFeed
   if (!currentSubmission) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="space-y-3 max-w-sm">
+        <div className="space-y-4 max-w-sm">
           <div
-            className="w-16 h-16 mx-auto bg-surface-elevated border border-border-focus flex items-center justify-center mb-4"
+            className="w-16 h-16 mx-auto bg-surface-elevated border border-border-focus flex items-center justify-center mb-2"
             style={{ borderRadius: "var(--radius-minimal)" }}
           >
             <CheckIcon />
           </div>
-          <p className="text-base font-bold text-text-primary">
-            You&apos;ve heard them all
-          </p>
-          <p className="text-xs text-text-secondary">
-            That&apos;s all {submissions.length} flip{submissions.length !== 1 ? "s" : ""} for today.
-          </p>
-          <Link
-            href="/"
-            className="inline-block mt-3 text-[10px] font-mono font-bold text-text-primary hover:text-white transition-colors uppercase tracking-wide underline underline-offset-2"
-          >
-            Back to today →
-          </Link>
+          <div className="space-y-2">
+            <p className="text-base font-bold text-text-primary">
+              {submissions.length > 0 ? "You're caught up" : "No flips yet"}
+            </p>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              {submissions.length > 0
+                ? "You've listened to all available flips for today."
+                : "Be the first to submit a flip for today's sample."}
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link
+              href="/leaderboard"
+              className="inline-block px-4 py-2 text-[10px] font-mono font-bold text-text-secondary hover:text-text-primary border border-border hover:border-border-focus transition-colors uppercase tracking-wide bg-surface hover:bg-surface-elevated"
+              style={{ borderRadius: "var(--radius-minimal)" }}
+            >
+              Leaderboard
+            </Link>
+            <Link
+              href="/"
+              className="inline-block px-4 py-2 text-[10px] font-mono font-bold text-text-primary hover:text-white transition-colors uppercase tracking-wide underline underline-offset-2"
+            >
+              {submissions.length > 0 ? "Back to today" : "Submit a flip"}
+            </Link>
+          </div>
         </div>
       </div>
     );
