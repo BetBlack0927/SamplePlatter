@@ -5,6 +5,7 @@ import {
   getCurrentSession,
   getTodaySample,
   getUnreviewedSubmissions,
+  getSubmissionsForSample,
 } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = {
@@ -21,8 +22,13 @@ export default async function ListenPage() {
 
   // Get unreviewed submissions for swipe queue
   // Excludes already-reviewed and user's own submissions
-  const submissions = sample
+  const unreviewedSubmissions = sample
     ? await getUnreviewedSubmissions(sample.id, session?.user.id, true)
+    : [];
+
+  // Get total submission count (including reviewed ones) to distinguish empty states
+  const totalSubmissions = sample
+    ? await getSubmissionsForSample(sample.id, session?.user.id, "new")
     : [];
 
   const today = new Date().toLocaleDateString("en-US", {
@@ -72,9 +78,11 @@ export default async function ListenPage() {
 
       {/* Swipe Feed */}
       <SwipeFeed
-        submissions={submissions}
+        submissions={unreviewedSubmissions}
+        totalSubmissionCount={totalSubmissions.length}
         isAuthenticated={isAuthenticated}
         hasSample={!!sample}
+        sampleId={sample?.id}
       />
     </div>
   );
