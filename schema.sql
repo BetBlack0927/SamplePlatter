@@ -126,6 +126,73 @@ create policy "Users can delete their own likes"
   on public.likes for delete using (auth.uid() = user_id);
 
 
+-- ─── submission_plays ───────────────────────────────────────────
+-- Tracks meaningful playback. Counted once per browser session token.
+create table public.submission_plays (
+  id             uuid primary key default gen_random_uuid(),
+  submission_id  uuid not null references public.submissions(id) on delete cascade,
+  user_id        uuid references auth.users(id) on delete set null,
+  session_id     text not null,
+  created_at     timestamptz not null default now()
+);
+
+alter table public.submission_plays enable row level security;
+
+create policy "Submission plays are publicly readable"
+  on public.submission_plays for select using (true);
+
+create policy "Anyone can insert submission plays"
+  on public.submission_plays for insert with check (true);
+
+create or replace function public.record_submission_play(
+  p_submission_id uuid,
+  p_session_id text,
+  p_user_id uuid default null
+)
+returns integer language plpgsql security definer set search_path = public as $$
+declare
+  current_count integer := 0;
+  should_insert boolean := true;
+begin
+  if p_user_id is not null then
+    select not exists (
+      select 1
+      from public.submission_plays
+      where submission_id = p_submission_id
+        and user_id = p_user_id
+        and created_at >= now() - interval '60 seconds'
+    )
+    into should_insert;
+  else
+    select not exists (
+      select 1
+      from public.submission_plays
+      where submission_id = p_submission_id
+        and session_id = p_session_id
+        and created_at >= now() - interval '60 seconds'
+    )
+    into should_insert;
+  end if;
+
+  if should_insert then
+    insert into public.submission_plays (submission_id, user_id, session_id)
+    values (p_submission_id, p_user_id, p_session_id);
+
+    update public.submissions
+    set play_count = play_count + 1
+    where id = p_submission_id
+    returning play_count into current_count;
+  else
+    select play_count into current_count
+    from public.submissions
+    where id = p_submission_id;
+  end if;
+
+  return coalesce(current_count, 0);
+end;
+$$;
+
+
 -- ─── Helpful views ────────────────────────────────────────────
 
 -- Submission with like count (useful for feeds and leaderboard)

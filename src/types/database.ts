@@ -56,6 +56,14 @@ export interface Like {
   created_at: string;
 }
 
+export interface SubmissionPlay {
+  id: string;
+  submission_id: string;
+  user_id: string | null;
+  session_id: string;
+  created_at: string;
+}
+
 /* ─── Supabase Database type shell ─────────────────────────── */
 /* Matches the shape expected by @supabase/supabase-js generics */
 
@@ -86,9 +94,24 @@ export type Database = {
         Update: Partial<Omit<Like, "id" | "created_at">>;
         Relationships: [];
       };
+      submission_plays: {
+        Row: SubmissionPlay;
+        Insert: Omit<SubmissionPlay, "id" | "created_at">;
+        Update: Partial<Omit<SubmissionPlay, "id" | "created_at">>;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      record_submission_play: {
+        Args: {
+          p_submission_id: string;
+          p_session_id: string;
+          p_user_id?: string | null;
+        };
+        Returns: number;
+      };
+    };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
   };

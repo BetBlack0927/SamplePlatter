@@ -40,22 +40,23 @@ export default async function LeaderboardPage(props: {
     ? (rawPeriod as LeaderboardPeriod)
     : "today";
 
-  const session = await getCurrentSession();
+  const sessionPromise = getCurrentSession();
+  const leaderboardDataPromise = getLeaderboardData(period);
+  const [session, { topFlips, topProducers }] = await Promise.all([
+    sessionPromise,
+    leaderboardDataPromise,
+  ]);
   const isAuthenticated = !!session;
-  const { topFlips, topProducers } = await getLeaderboardData(
-    period,
-    session?.user.id
-  );
 
   return (
     <PageContainer>
-      <div className="space-y-5">
+      <div className="space-y-6">
 
         {/* ── Header + period tabs ─────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-border">
           <div>
-            <h1 className="text-base font-bold text-text-primary tracking-tight">Leaderboard</h1>
-            <p className="text-[10px] font-mono text-text-secondary mt-0.5">
+            <h1 className="text-xl font-bold text-text-primary tracking-tight">Leaderboard</h1>
+            <p className="text-sm font-mono text-text-secondary mt-1">
               Top flips and producers ranked by the community.
             </p>
           </div>
@@ -108,7 +109,7 @@ export default async function LeaderboardPage(props: {
                 ))}
               </div>
             )}
-            <p className="text-[9px] font-mono text-text-muted mt-3 pt-2.5 border-t border-border leading-relaxed">
+            <p className="text-[10px] font-mono text-text-muted mt-4 pt-3 border-t border-border leading-relaxed">
               Ranked by total likes on submissions{" "}
               {period === "today"
                 ? "submitted today."
@@ -143,28 +144,29 @@ function ProducerRow({
   return (
     <Link
       href={`/profile/${producer.username}`}
-      className="group flex items-center gap-2.5 px-2.5 py-2 bg-surface hover:bg-surface-elevated border-l-2 border-l-transparent hover:border-l-accent/40 border-y border-y-transparent hover:border-y-border transition-all duration-100"
+      prefetch={true}
+      className="group flex items-center gap-3 px-3 py-2.5 bg-surface hover:bg-surface-elevated border-l-2 border-l-transparent hover:border-l-accent/40 border-y border-y-transparent hover:border-y-border transition-all duration-100"
       style={{ borderRadius: 'var(--radius-minimal)' }}
     >
       <span
-        className={`text-[10px] font-mono w-4 text-right shrink-0 tabular-nums font-bold ${rankColor}`}
+        className={`text-[11px] font-mono w-4 text-right shrink-0 tabular-nums font-bold ${rankColor}`}
       >
         {rank}
       </span>
-      <div className="w-7 h-7 bg-surface-elevated border border-border shrink-0 flex items-center justify-center" style={{ borderRadius: 'var(--radius-minimal)' }}>
-        <span className="text-[8px] font-mono font-bold text-text-muted">
+      <div className="w-8 h-8 bg-surface-elevated border border-border shrink-0 flex items-center justify-center" style={{ borderRadius: 'var(--radius-minimal)' }}>
+        <span className="text-[9px] font-mono font-bold text-text-muted">
           {producer.username.slice(0, 2).toUpperCase()}
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-bold text-text-primary truncate group-hover:text-white transition-colors leading-tight">
+        <p className="text-sm font-bold text-text-primary truncate group-hover:text-white transition-colors leading-tight">
           {producer.display_name}
         </p>
-        <div className="flex items-center gap-2.5 mt-0.5">
-          <span className="text-[9px] font-mono text-text-secondary font-semibold">
+        <div className="flex items-center gap-3 mt-1">
+          <span className="text-[10px] font-mono text-text-secondary font-semibold">
             {producer.total_likes} likes
           </span>
-          <span className="text-[9px] font-mono text-text-muted">
+          <span className="text-[10px] font-mono text-text-muted">
             {producer.total_flips} flip{producer.total_flips !== 1 ? "s" : ""}
           </span>
         </div>
@@ -177,8 +179,8 @@ function ProducerRow({
 
 function EmptySection({ message }: { message: string }) {
   return (
-    <div className="py-8 text-center border border-border border-dashed" style={{ borderRadius: 'var(--radius-minimal)' }}>
-      <p className="text-[10px] font-mono text-text-muted">{message}</p>
+    <div className="py-10 text-center border border-border border-dashed" style={{ borderRadius: 'var(--radius-minimal)' }}>
+      <p className="text-[11px] font-mono text-text-muted">{message}</p>
     </div>
   );
 }

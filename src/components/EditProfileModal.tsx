@@ -20,7 +20,7 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
 
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [bio, setBio] = useState(profile.bio || "");
-  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || "");
+  const [avatarUrl] = useState(profile.avatar_url || "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
@@ -167,12 +167,12 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
         >
           <form onSubmit={handleSubmit} className="flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border bg-surface">
+              <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border bg-surface">
               <div>
-                <h2 className="text-xs font-bold text-text-primary uppercase tracking-wide">
+                  <h2 className="text-sm font-bold text-text-primary tracking-tight">
                   Edit Profile
                 </h2>
-                <p className="text-[9px] font-mono text-text-muted mt-0.5">
+                  <p className="text-[10px] font-mono text-text-secondary mt-1">
                   Update your profile information
                 </p>
               </div>
@@ -195,13 +195,13 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
                   className="px-3 py-2 bg-error/10 border border-error/30"
                   style={{ borderRadius: "var(--radius-minimal)" }}
                 >
-                  <p className="text-[10px] font-mono text-error">{error}</p>
+                  <p className="text-[11px] font-mono text-error">{error}</p>
                 </div>
               )}
 
               {/* Avatar upload */}
               <div className="space-y-2">
-                <label className="block text-[8px] font-mono uppercase tracking-[0.22em] text-text-muted font-semibold">
+                <label className="block text-[11px] font-mono tracking-[0.08em] text-text-secondary font-semibold">
                   Profile Picture
                 </label>
                 <div className="flex items-center gap-3">
@@ -242,7 +242,7 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
                     onChange={handleAvatarChange}
                   />
                 </div>
-                <p className="text-[9px] font-mono text-text-muted">
+                <p className="text-[10px] font-mono text-text-muted">
                   JPG, PNG, or GIF · Max 2MB
                 </p>
               </div>
@@ -251,7 +251,7 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
               <div className="space-y-1">
                 <label
                   htmlFor="display_name"
-                  className="block text-[8px] font-mono uppercase tracking-[0.22em] text-text-muted font-semibold"
+                  className="block text-[11px] font-mono tracking-[0.08em] text-text-secondary font-semibold"
                 >
                   Display Name
                 </label>
@@ -262,7 +262,7 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
                   onChange={(e) => setDisplayName(e.target.value)}
                   maxLength={50}
                   required
-                  className="w-full bg-surface border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
+                  className="w-full bg-surface border border-border px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
                   style={{ borderRadius: "var(--radius-minimal)" }}
                 />
               </div>
@@ -272,12 +272,12 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
                 <div className="flex items-center justify-between">
                   <label
                     htmlFor="bio"
-                    className="block text-[8px] font-mono uppercase tracking-[0.22em] text-text-muted font-semibold"
+                    className="block text-[11px] font-mono tracking-[0.08em] text-text-secondary font-semibold"
                   >
                     Bio
                   </label>
                   <span
-                    className={`text-[9px] font-mono tabular-nums ${
+                    className={`text-[10px] font-mono tabular-nums ${
                       bioError ? "text-error" : "text-text-muted"
                     }`}
                   >
@@ -291,7 +291,7 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
                   maxLength={160}
                   rows={3}
                   placeholder="Tell us about yourself..."
-                  className="w-full bg-surface border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors resize-none"
+                  className="w-full bg-surface border border-border px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors resize-none"
                   style={{ borderRadius: "var(--radius-minimal)" }}
                 />
               </div>

@@ -36,11 +36,12 @@ export function SortTabs({ options, current, className }: SortTabsProps) {
         <Link
           key={id}
           href={href}
+          prefetch={true}
           onClick={() => setActive(id)}
-          className={`text-[9px] font-mono uppercase tracking-[0.22em] px-2.5 py-1.5 transition-colors font-semibold ${
+          className={`text-[11px] font-mono tracking-[0.12em] px-3 py-2 transition-colors font-semibold ${
             active === id
               ? "bg-text-primary text-black"
-              : "text-text-muted hover:text-text-secondary hover:bg-surface-elevated"
+              : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
           }`}
         >
           {label}

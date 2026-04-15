@@ -43,13 +43,13 @@ export default async function ListenPage() {
     <div className="min-h-screen">
       {/* Minimal header */}
       <div className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 py-4">
+        <div className="max-w-5xl mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 py-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-sm font-bold text-text-primary tracking-tight">
+              <h1 className="text-lg font-bold text-text-primary tracking-tight">
                 Discover
               </h1>
-              <p className="text-[9px] text-text-secondary mt-0.5 font-mono">
+              <p className="text-[11px] text-text-secondary mt-1 font-mono">
                 {today}
                 {sampleTitle && (
                   <>
@@ -67,7 +67,7 @@ export default async function ListenPage() {
 
             <Link
               href="/"
-              className="text-[9px] font-mono font-bold text-text-secondary hover:text-text-primary transition-colors uppercase tracking-wider"
+              className="text-[11px] font-mono font-bold text-text-secondary hover:text-text-primary transition-colors tracking-[0.12em]"
               style={{ borderRadius: "var(--radius-minimal)" }}
             >
               Today
@@ -82,7 +82,6 @@ export default async function ListenPage() {
         totalSubmissionCount={totalSubmissions.length}
         isAuthenticated={isAuthenticated}
         hasSample={!!sample}
-        sampleId={sample?.id}
       />
     </div>
   );

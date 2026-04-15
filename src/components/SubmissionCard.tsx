@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Submission } from "@/types/database";
 import { LikeButton } from "@/components/LikeButton";
+import { recordSubmissionPlay } from "@/lib/actions/plays";
+import { getOrCreatePlaybackSessionId } from "@/lib/playback-session";
 
 /* ─── Module-level audio registry ───────────────────────────────
  * Shared across all SubmissionCard instances on the page so only
@@ -15,16 +17,19 @@ const activeTrack: {
   el: HTMLAudioElement | null;
   setPlaying: ((v: boolean) => void) | null;
   setProgress: ((v: number) => void) | null;
-} = { el: null, setPlaying: null, setProgress: null };
+  setCurrentTime: ((v: number) => void) | null;
+} = { el: null, setPlaying: null, setProgress: null, setCurrentTime: null };
 
 function stopCurrent() {
   if (activeTrack.el) {
     activeTrack.el.pause();
     activeTrack.setPlaying?.(false);
     activeTrack.setProgress?.(0);
+    activeTrack.setCurrentTime?.(0);
     activeTrack.el = null;
     activeTrack.setPlaying = null;
     activeTrack.setProgress = null;
+    activeTrack.setCurrentTime = null;
   }
 }
 
@@ -43,14 +48,38 @@ export function SubmissionCard({
 }: SubmissionCardProps) {
   const timeAgo = formatTimeAgo(submission.created_at);
   const profile = submission.profile;
-  const duration = formatDuration(submission.duration_seconds);
   const hasAudio = !!submission.audio_url;
+  const playTimerRef = useRef<number | null>(null);
+  const isRecordingPlayRef = useRef(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0–1
+  const [currentTime, setCurrentTime] = useState(0);
+  const [durationSeconds, setDurationSeconds] = useState(
+    submission.duration_seconds ?? 0
+  );
+  const [playCount, setPlayCount] = useState(submission.play_count);
 
   const waveform = waveformForId(submission.id);
+  const displayDuration = durationSeconds || submission.duration_seconds || 0;
+  const playbackLabel = displayDuration
+    ? `${formatTime(currentTime)} / ${formatTime(displayDuration)}`
+    : "";
+
+  const clearPlayTimer = () => {
+    if (playTimerRef.current !== null) {
+      window.clearTimeout(playTimerRef.current);
+      playTimerRef.current = null;
+    }
+  };
+
+  const registerActiveTrack = (el: HTMLAudioElement) => {
+    activeTrack.el = el;
+    activeTrack.setPlaying = setIsPlaying;
+    activeTrack.setProgress = setProgress;
+    activeTrack.setCurrentTime = setCurrentTime;
+  };
 
   const togglePlay = () => {
     const el = audioRef.current;
@@ -63,10 +92,7 @@ export function SubmissionCard({
       if (activeTrack.el && activeTrack.el !== el) {
         stopCurrent();
       }
-      // Register this card as the active track
-      activeTrack.el = el;
-      activeTrack.setPlaying = setIsPlaying;
-      activeTrack.setProgress = setProgress;
+      registerActiveTrack(el);
 
       el.play().catch(() => {
         // Autoplay blocked or load error — revert
@@ -74,12 +100,61 @@ export function SubmissionCard({
         activeTrack.el = null;
         activeTrack.setPlaying = null;
         activeTrack.setProgress = null;
+        activeTrack.setCurrentTime = null;
       });
     }
   };
 
+  const seekToPosition = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = audioRef.current;
+    if (!el || !hasAudio) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const nextDuration = el.duration || displayDuration;
+    if (!nextDuration) return;
+
+    if (activeTrack.el && activeTrack.el !== el) {
+      stopCurrent();
+    }
+
+    registerActiveTrack(el);
+    el.currentTime = ratio * nextDuration;
+    setCurrentTime(ratio * nextDuration);
+    setProgress(ratio);
+  };
+
+  useEffect(() => {
+    isRecordingPlayRef.current = false;
+    clearPlayTimer();
+
+    return clearPlayTimer;
+  }, [submission.id]);
+
+  useEffect(() => {
+    if (!isPlaying || !hasAudio || isRecordingPlayRef.current) {
+      if (!isPlaying) clearPlayTimer();
+      return;
+    }
+
+    playTimerRef.current = window.setTimeout(async () => {
+      const sessionId = getOrCreatePlaybackSessionId();
+      if (!sessionId) return;
+
+      isRecordingPlayRef.current = true;
+      const result = await recordSubmissionPlay(submission.id, sessionId);
+      if (!result.error) {
+        setPlayCount(result.playCount);
+      }
+      isRecordingPlayRef.current = false;
+      playTimerRef.current = null;
+    }, 3000);
+
+    return clearPlayTimer;
+  }, [hasAudio, isPlaying, submission.id]);
+
   return (
-    <div className="group flex items-center gap-2.5 px-2.5 py-2 bg-surface border-l-2 border-l-transparent border-y border-y-transparent hover:border-l-accent/40 hover:border-y-border hover:bg-surface-elevated transition-all duration-100" style={{ borderRadius: 'var(--radius-minimal)' }}>
+    <div className="group flex items-center gap-3 px-3 py-2.5 bg-surface border-l-2 border-l-transparent border-y border-y-transparent hover:border-l-accent/40 hover:border-y-border hover:bg-surface-elevated transition-all duration-100" style={{ borderRadius: 'var(--radius-minimal)' }}>
 
       {/* Audio element */}
       {hasAudio && (
@@ -88,37 +163,47 @@ export function SubmissionCard({
           src={submission.audio_url}
           preload="none"
           onPlay={() => setIsPlaying(true)}
+          onLoadedMetadata={() => {
+            const el = audioRef.current;
+            if (!el?.duration) return;
+            setDurationSeconds(Math.round(el.duration));
+          }}
           onPause={() => {
             setIsPlaying(false);
             if (activeTrack.el === audioRef.current) {
               activeTrack.el = null;
               activeTrack.setPlaying = null;
               activeTrack.setProgress = null;
+              activeTrack.setCurrentTime = null;
             }
           }}
           onEnded={() => {
             setIsPlaying(false);
             setProgress(0);
+            setCurrentTime(0);
             if (activeTrack.el === audioRef.current) {
               activeTrack.el = null;
               activeTrack.setPlaying = null;
               activeTrack.setProgress = null;
+              activeTrack.setCurrentTime = null;
             }
           }}
           onTimeUpdate={() => {
             const el = audioRef.current;
-            if (el?.duration) setProgress(el.currentTime / el.duration);
+            if (!el?.duration) return;
+            setCurrentTime(el.currentTime);
+            setProgress(el.currentTime / el.duration);
           }}
         />
       )}
 
       {/* Rank */}
-      <span className="w-5 shrink-0 text-right text-[10px] font-mono text-text-muted select-none tabular-nums font-semibold">
+      <span className="w-5 shrink-0 text-right text-[11px] font-mono text-text-secondary select-none tabular-nums font-semibold">
         {rank ?? "—"}
       </span>
 
       {/* Avatar */}
-      <div className="w-6 h-6 bg-surface-elevated border border-border shrink-0 overflow-hidden flex items-center justify-center" style={{ borderRadius: 'var(--radius-minimal)' }}>
+      <div className="w-7 h-7 bg-surface-elevated border border-border shrink-0 overflow-hidden flex items-center justify-center" style={{ borderRadius: 'var(--radius-minimal)' }}>
         {profile?.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -127,37 +212,38 @@ export function SubmissionCard({
             className="w-full h-full object-cover"
           />
         ) : (
-          <span className="text-[8px] font-mono font-bold text-text-muted leading-none">
+          <span className="text-[9px] font-mono font-bold text-text-muted leading-none">
             {profile?.username?.slice(0, 2).toUpperCase() ?? "??"}
           </span>
         )}
       </div>
 
       {/* Producer + title */}
-      <div className="w-40 lg:w-44 shrink-0 min-w-0">
+      <div className="w-44 lg:w-48 shrink-0 min-w-0">
         <Link
           href={`/profile/${profile?.username ?? "#"}`}
-          className="block text-xs font-semibold text-text-primary hover:text-white transition-colors truncate leading-tight"
+          prefetch={true}
+          className="block text-sm font-semibold text-text-primary hover:text-white transition-colors truncate leading-tight"
           onClick={(e) => e.stopPropagation()}
         >
           {profile?.display_name ?? "Unknown"}
         </Link>
-        <p className="text-[10px] text-text-secondary truncate leading-tight mt-0.5">
+        <p className="text-[11px] text-text-secondary truncate leading-snug mt-1">
           {submission.title ?? (
             <span className="italic text-text-muted">untitled</span>
           )}
         </p>
       </div>
 
-      {/* Waveform — click to play/pause, fills as track progresses */}
+      {/* Waveform — click to seek, fills as track progresses */}
       <div
-        className="flex-1 min-w-0 h-6 flex items-center gap-px overflow-hidden cursor-pointer"
-        onClick={togglePlay}
-        title={hasAudio ? (isPlaying ? "Pause" : "Play") : undefined}
+        className="flex-1 min-w-0 h-7 flex items-center gap-px overflow-hidden cursor-pointer"
+        onClick={seekToPosition}
+        title={hasAudio ? "Seek" : undefined}
       >
         {waveform.map((h, i) => {
           const barPos = i / waveform.length;
-          const played = isPlaying && barPos < progress;
+          const played = barPos < progress;
           return (
             <div
               key={i}
@@ -175,15 +261,15 @@ export function SubmissionCard({
       </div>
 
       {/* Stats */}
-      <div className="hidden sm:flex items-center gap-2.5 shrink-0">
-        {duration && (
-          <span className="text-[10px] font-mono text-text-muted w-8 text-right tabular-nums font-semibold">
-            {duration}
+      <div className="hidden sm:flex items-center gap-3 shrink-0">
+        {playbackLabel && (
+          <span className="text-[11px] font-mono text-text-secondary w-[6.25rem] text-right tabular-nums font-semibold">
+            {playbackLabel}
           </span>
         )}
-        <span className="text-[10px] font-mono text-text-secondary flex items-center gap-1 font-semibold">
+        <span className="text-[11px] font-mono text-text-secondary flex items-center gap-1 font-semibold">
           <EyeIcon />
-          {submission.play_count}
+          {playCount}
         </span>
 
         <LikeButton
@@ -195,7 +281,7 @@ export function SubmissionCard({
       </div>
 
       {/* Time */}
-      <span className="hidden lg:block text-[10px] font-mono text-text-muted w-10 text-right shrink-0 tabular-nums font-semibold">
+      <span className="hidden lg:block text-[11px] font-mono text-text-muted w-10 text-right shrink-0 tabular-nums font-semibold">
         {timeAgo}
       </span>
 
@@ -203,7 +289,7 @@ export function SubmissionCard({
       <button
         onClick={togglePlay}
         disabled={!hasAudio}
-        className={`w-6 h-6 shrink-0 border flex items-center justify-center transition-all duration-100 active:scale-95 ${
+        className={`w-7 h-7 shrink-0 border flex items-center justify-center transition-all duration-100 active:scale-95 ${
           isPlaying
             ? "border-text-primary/60 bg-text-primary/10 text-text-primary"
             : "border-border bg-surface-elevated text-text-secondary hover:text-text-primary hover:border-border-focus hover:bg-surface-elevated"
@@ -262,10 +348,11 @@ function formatTimeAgo(dateStr: string): string {
   return `${Math.floor(s / 86400)}d`;
 }
 
-function formatDuration(seconds: number | null | undefined): string {
-  if (!seconds) return "";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+function formatTime(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined) return "";
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(safeSeconds / 60);
+  const s = safeSeconds % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 

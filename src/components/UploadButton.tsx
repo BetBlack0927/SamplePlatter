@@ -7,20 +7,26 @@ interface UploadButtonProps {
   sampleId: string;
   userId: string;
   activeDate: string;
+  className?: string;
 }
 
 /**
  * Thin client component that owns the open/closed state of the upload modal.
  * The Today page (Server Component) passes in the sample context.
  */
-export function UploadButton({ sampleId, userId, activeDate }: UploadButtonProps) {
+export function UploadButton({
+  sampleId,
+  userId,
+  activeDate,
+  className = "",
+}: UploadButtonProps) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex-1 btn btn-primary btn-md uppercase tracking-wider"
+        className={`flex-1 btn btn-primary btn-md uppercase tracking-wider ${className}`}
       >
         <UploadIcon />
         Upload Your Flip

@@ -14,15 +14,15 @@ export function SignInForm() {
     <form action={action} className="space-y-3">
       {/* Inline error */}
       {state?.error && (
-        <div className="px-3 py-2 bg-error/10 border border-error/30" style={{ borderRadius: 'var(--radius-minimal)' }}>
-          <p className="text-[10px] font-mono text-error">{state.error}</p>
+        <div className="px-3 py-2.5 bg-error/10 border border-error/30" style={{ borderRadius: 'var(--radius-minimal)' }}>
+          <p className="text-[11px] font-mono text-error">{state.error}</p>
         </div>
       )}
 
       <div className="space-y-1">
         <label
           htmlFor="email"
-          className="block text-[8px] font-mono uppercase tracking-[0.22em] text-text-muted font-semibold"
+          className="block text-[11px] font-mono tracking-[0.08em] text-text-secondary font-semibold"
         >
           Email
         </label>
@@ -33,7 +33,7 @@ export function SignInForm() {
           required
           autoComplete="email"
           placeholder="you@example.com"
-          className="w-full bg-surface border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
+          className="w-full bg-surface border border-border px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
           style={{ borderRadius: 'var(--radius-minimal)' }}
         />
       </div>
@@ -41,7 +41,7 @@ export function SignInForm() {
       <div className="space-y-1">
         <label
           htmlFor="password"
-          className="block text-[8px] font-mono uppercase tracking-[0.22em] text-text-muted font-semibold"
+          className="block text-[11px] font-mono tracking-[0.08em] text-text-secondary font-semibold"
         >
           Password
         </label>
@@ -52,7 +52,7 @@ export function SignInForm() {
           required
           autoComplete="current-password"
           placeholder="••••••••"
-          className="w-full bg-surface border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
+          className="w-full bg-surface border border-border px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
           style={{ borderRadius: 'var(--radius-minimal)' }}
         />
       </div>
@@ -65,7 +65,7 @@ export function SignInForm() {
         {pending ? "Signing in" : "Sign In"}
       </button>
 
-      <p className="text-[10px] font-mono text-text-muted text-center">
+      <p className="text-[11px] font-mono text-text-muted text-center">
         No account?{" "}
         <Link
           href="/sign-up"

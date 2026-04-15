@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { cache } from "react";
 import type { Profile, Sample, Submission } from "@/types/database";
 
 /* ─── Auth types ─────────────────────────────────────────────── */
@@ -16,7 +17,7 @@ export interface SessionData {
 
 /* ─── Auth queries ───────────────────────────────────────────── */
 
-export async function getCurrentSession(): Promise<SessionData | null> {
+const getCurrentSessionCached = cache(async (): Promise<SessionData | null> => {
   const supabase = await createClient();
 
   const {
@@ -36,14 +37,14 @@ export async function getCurrentSession(): Promise<SessionData | null> {
     user: { id: user.id, email: user.email ?? "" },
     profile: (data as Profile | null) ?? null,
   };
+});
+
+export async function getCurrentSession(): Promise<SessionData | null> {
+  return getCurrentSessionCached();
 }
 
 export async function getIsAuthenticated(): Promise<boolean> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return !!user;
+  return !!(await getCurrentSession());
 }
 
 /* ─── Sample queries ─────────────────────────────────────────── */
@@ -136,28 +137,34 @@ async function fetchSubmissions(
 
   // Profiles — one round-trip for all submitters
   const userIds = [...new Set(typedRows.map((r) => r.user_id as string))];
-  const { data: profiles } = await supabase
+  const profilesPromise = supabase
     .from("profiles")
     .select("id, username, display_name, avatar_url, bio, created_at, updated_at")
     .in("id", userIds);
 
   const profileMap = new Map(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((profiles as any[]) ?? []).map((p) => [p.id, p as Profile])
+    []
   );
 
-  // Liked set — one round-trip for current user's likes
+  const likesPromise = opts.userId
+    ? supabase
+        .from("likes")
+        .select("submission_id")
+        .eq("user_id", opts.userId)
+        .in("submission_id", typedRows.map((r) => r.id as string))
+    : Promise.resolve({ data: null });
+
+  const [{ data: profiles }, { data: userLikes }] = await Promise.all([
+    profilesPromise,
+    likesPromise,
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ((profiles as any[]) ?? []).forEach((p) => profileMap.set(p.id, p as Profile));
+
   const likedSet = new Set<string>();
-  if (opts.userId) {
-    const submissionIds = typedRows.map((r) => r.id as string);
-    const { data: userLikes } = await supabase
-      .from("likes")
-      .select("submission_id")
-      .eq("user_id", opts.userId)
-      .in("submission_id", submissionIds);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((userLikes as any[]) ?? []).forEach((l) => likedSet.add(l.submission_id));
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ((userLikes as any[]) ?? []).forEach((l) => likedSet.add(l.submission_id));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return typedRows.map((row: any) => ({
@@ -287,6 +294,8 @@ export async function getProfilePageData(
   username: string,
   currentUserId?: string
 ): Promise<ProfilePageData | null> {
+  const viewerSessionPromise =
+    currentUserId === undefined ? getCurrentSession() : Promise.resolve(null);
   const supabase = await createClient();
 
   // 1. Resolve profile by username
@@ -309,6 +318,9 @@ export async function getProfilePageData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const typedRows = (rows as any[]) ?? [];
 
+  const resolvedCurrentUserId =
+    currentUserId ?? (await viewerSessionPromise)?.user.id;
+
   // 3. Stats — computed from the rows we already fetched (no extra queries)
   const totalFlips = typedRows.length;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -317,30 +329,37 @@ export async function getProfilePageData(
 
   // 4. Liked set for current viewer
   const likedSet = new Set<string>();
-  if (currentUserId && typedRows.length > 0) {
-    const ids = typedRows.map((r) => r.id as string);
-    const { data: userLikes } = await supabase
-      .from("likes")
-      .select("submission_id")
-      .eq("user_id", currentUserId)
-      .in("submission_id", ids);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((userLikes as any[]) ?? []).forEach((l) => likedSet.add(l.submission_id));
-  }
-
-  // 5. Sample titles (one query for all distinct samples used)
   const sampleIds = [...new Set(typedRows.map((r) => r.sample_id as string))];
-  const sampleMap = new Map<string, { title: string; active_date: string }>();
-  if (sampleIds.length > 0) {
-    const { data: samples } = await supabase
+  const likesPromise =
+    resolvedCurrentUserId && typedRows.length > 0
+      ? supabase
+          .from("likes")
+          .select("submission_id")
+          .eq("user_id", resolvedCurrentUserId)
+          .in("submission_id", typedRows.map((r) => r.id as string))
+      : Promise.resolve({ data: null });
+  const samplesPromise =
+    sampleIds.length > 0
+      ? supabase
       .from("samples")
       .select("id, title, active_date")
-      .in("id", sampleIds);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((samples as any[]) ?? []).forEach((s: any) =>
-      sampleMap.set(s.id, { title: s.title, active_date: s.active_date })
-    );
-  }
+          .in("id", sampleIds)
+      : Promise.resolve({ data: null });
+
+  const [{ data: userLikes }, { data: samples }] = await Promise.all([
+    likesPromise,
+    samplesPromise,
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ((userLikes as any[]) ?? []).forEach((l) => likedSet.add(l.submission_id));
+
+  // 5. Sample titles (one query for all distinct samples used)
+  const sampleMap = new Map<string, { title: string; active_date: string }>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ((samples as any[]) ?? []).forEach((s: any) =>
+    sampleMap.set(s.id, { title: s.title, active_date: s.active_date })
+  );
 
   // 6. Assemble Submission objects
   const submissions: Submission[] = typedRows.map(
@@ -424,9 +443,8 @@ export async function getLeaderboardData(
   userId?: string
 ): Promise<LeaderboardData> {
   const since = periodStartISO(period);
-
-  // Top 10 flips in the period
-  const topFlips = await fetchSubmissions({ since, userId, limit: 10 });
+  const viewerSessionPromise =
+    userId === undefined ? getCurrentSession() : Promise.resolve(null);
 
   // Top producers — aggregate likes per user across the same period
   const supabase = await createClient();
@@ -435,7 +453,16 @@ export async function getLeaderboardData(
     "user_id, like_count"
   );
   if (since) producerQ = producerQ.gte("created_at", since);
-  const { data: producerRows } = await producerQ;
+  const producerRowsPromise = producerQ;
+
+  const resolvedUserId = userId ?? (await viewerSessionPromise)?.user.id;
+
+  const [topFlipsResult, { data: producerRows }] = await Promise.all([
+    fetchSubmissions({ since, userId: resolvedUserId, limit: 10 }),
+    producerRowsPromise,
+  ]);
+
+  const topFlips = topFlipsResult;
 
   const producerMap = new Map<string, { total_likes: number; total_flips: number }>();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

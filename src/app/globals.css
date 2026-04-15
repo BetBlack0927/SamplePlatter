@@ -11,8 +11,8 @@
   --accent-dim: rgba(245, 245, 245, 0.08);
   --accent-subtle: rgba(245, 245, 245, 0.15);
   --text-primary: #f5f5f5;
-  --text-secondary: #8a8a8a;
-  --text-muted: #5a5a5a;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
   --error: #d94444;
   
   /* ── Border radius scale (flatter, hardware-like) ────────── */
@@ -55,8 +55,30 @@ body {
   background-color: var(--background);
   color: var(--text-primary);
   font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes spin-vinyl {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.turntable-record {
+  animation: spin-vinyl 8s linear infinite;
+  animation-play-state: paused;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.turntable-record[data-playing="true"] {
+  animation-play-state: running;
 }
 
 /* ─── Selection ─────────────────────────────────────────────── */
@@ -86,7 +108,7 @@ body {
 
 /* ─── Button base styles ────────────────────────────────────── */
 .btn {
-  @apply inline-flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-wide;
+  @apply inline-flex items-center justify-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.16em];
   @apply transition-all duration-100 active:scale-[0.98];
   @apply disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100;
   border-radius: var(--radius-minimal);
@@ -108,13 +130,13 @@ body {
 }
 
 .btn-sm {
-  @apply px-3 py-2 text-[10px];
+  @apply px-3 py-2 text-[11px];
 }
 
 .btn-md {
-  @apply px-4 py-2.5 text-xs;
+  @apply px-4 py-2.5 text-[11px];
 }
 
 .btn-lg {
-  @apply px-5 py-3 text-xs;
+  @apply px-5 py-3 text-sm;
 }

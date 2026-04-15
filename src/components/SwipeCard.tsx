@@ -1,24 +1,28 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import type { Submission } from "@/types/database";
 import { toggleLike } from "@/lib/actions/likes";
 import { saveReview } from "@/lib/actions/reviews";
-import { useRouter } from "next/navigation";
+import { recordSubmissionPlay } from "@/lib/actions/plays";
+import { getOrCreatePlaybackSessionId } from "@/lib/playback-session";
 
 interface SwipeCardProps {
   submission: Submission;
   isAuthenticated: boolean;
   onSwipe: (liked: boolean, success: boolean) => void;
+  animationState?: "center" | "enter" | "exit-left" | "exit-right";
 }
 
-export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardProps) {
-  const router = useRouter();
+export function SwipeCard({
+  submission,
+  isAuthenticated,
+  onSwipe,
+  animationState = "center",
+}: SwipeCardProps) {
   const [isPending, startTransition] = useTransition();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
-  const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackProgress, setPlaybackProgress] = useState(0);
@@ -26,12 +30,14 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
   const [error, setError] = useState<string | null>(null);
   
   const audioRef = useRef<HTMLAudioElement>(null);
+  const playTimerRef = useRef<number | null>(null);
+  const isRecordingPlayRef = useRef(false);
 
   const profile = submission.profile;
   const hasAudio = !!submission.audio_url;
 
   const handleSwipe = async (direction: "left" | "right") => {
-    if (isExiting || isPending) return;
+    if (animationState !== "center" || isPending) return;
 
     const liked = direction === "right";
     const action = liked ? "liked" : "skipped";
@@ -45,15 +51,8 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
       setIsPlaying(false);
     }
 
-    // Trigger exit animation
-    setIsExiting(true);
-    setExitDirection(direction);
-
-    // OPTIMISTIC: Notify parent immediately (don't wait for save)
-    // This makes the UI feel instant
-    setTimeout(() => {
-      onSwipe(liked, true);
-    }, 50); // Small delay for smooth animation start
+    // Notify parent immediately so the visual handoff starts at once.
+    onSwipe(liked, true);
 
     // Save review and like actions in background
     startTransition(async () => {
@@ -92,7 +91,7 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
     setIsPlaying(!isPlaying);
   };
 
-  const handleTimeUpdate = () => {
+  const handleTimeUpdate = useCallback(() => {
     if (!audioRef.current) return;
     const current = audioRef.current.currentTime;
     const total = audioRef.current.duration;
@@ -101,12 +100,12 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
       setCurrentTime(current);
       setPlaybackProgress(total > 0 ? current / total : 0);
     }
-  };
+  }, [isDragging]);
 
-  const handleLoadedMetadata = () => {
+  const handleLoadedMetadata = useCallback(() => {
     if (!audioRef.current) return;
     setDuration(audioRef.current.duration);
-  };
+  }, []);
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!audioRef.current) return;
@@ -126,7 +125,7 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
     handleSeek(e);
   };
 
-  const handleDragMove = (e: MouseEvent) => {
+  const handleDragMove = useCallback((e: MouseEvent) => {
     if (!isDragging || !audioRef.current) return;
     
     const progressBar = document.getElementById(`progress-bar-${submission.id}`);
@@ -140,11 +139,24 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
     audioRef.current.currentTime = newTime;
     setCurrentTime(newTime);
     setPlaybackProgress(percentage);
-  };
+  }, [duration, isDragging, submission.id]);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
+
+  const handleEnded = useCallback(() => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setPlaybackProgress(0);
+  }, []);
+
+  const clearPlayTimer = useCallback(() => {
+    if (playTimerRef.current !== null) {
+      window.clearTimeout(playTimerRef.current);
+      playTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (isDragging) {
@@ -156,7 +168,7 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
         document.removeEventListener("mouseup", handleDragEnd);
       };
     }
-  }, [isDragging, duration]);
+  }, [handleDragEnd, handleDragMove, isDragging]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -164,23 +176,53 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
-    audio.addEventListener("ended", () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      setPlaybackProgress(0);
-    });
+    audio.addEventListener("ended", handleEnded);
 
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("ended", handleEnded);
     };
-  }, []);
+  }, [handleEnded, handleLoadedMetadata, handleTimeUpdate]);
 
-  // Generate waveform bars
-  const waveformBars = Array.from({ length: 60 }, (_, i) => {
-    const h = 20 + Math.sin(i * 0.5) * 60 + Math.random() * 20;
-    return Math.min(100, Math.max(20, h));
-  });
+  useEffect(() => {
+    isRecordingPlayRef.current = false;
+    clearPlayTimer();
+
+    return clearPlayTimer;
+  }, [clearPlayTimer, submission.id]);
+
+  useEffect(() => {
+    if (!isPlaying || !hasAudio || isRecordingPlayRef.current) {
+      if (!isPlaying) clearPlayTimer();
+      return;
+    }
+
+    playTimerRef.current = window.setTimeout(async () => {
+      const sessionId = getOrCreatePlaybackSessionId();
+      if (!sessionId) return;
+
+      isRecordingPlayRef.current = true;
+      const result = await recordSubmissionPlay(submission.id, sessionId);
+      if (!result.error) {
+        // Count updated server-side; list rows will reflect fresh values on query refresh.
+      }
+      isRecordingPlayRef.current = false;
+      playTimerRef.current = null;
+    }, 3000);
+
+    return clearPlayTimer;
+  }, [clearPlayTimer, hasAudio, isPlaying, submission.id]);
+
+  const waveformBars = useMemo(
+    () =>
+      Array.from({ length: 60 }, (_, i) => {
+        const seed = submission.id.charCodeAt(i % submission.id.length) || 0;
+        const h = 20 + Math.sin(i * 0.5) * 55 + (seed % 18);
+        return Math.min(100, Math.max(20, h));
+      }),
+    [submission.id]
+  );
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -190,12 +232,14 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
 
   return (
     <div
-      className={`relative w-full max-w-md mx-auto transition-all duration-300 ${
-        isExiting
-          ? exitDirection === "left"
-            ? "opacity-0 -translate-x-[120%] -rotate-12"
-            : "opacity-0 translate-x-[120%] rotate-12"
-          : "opacity-100 translate-x-0 rotate-0"
+      className={`relative w-full max-w-md mx-auto transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        animationState === "exit-left"
+          ? "opacity-0 -translate-x-[118%] translate-y-1 rotate-[-10deg] scale-[0.98]"
+          : animationState === "exit-right"
+          ? "opacity-0 translate-x-[118%] translate-y-1 rotate-[10deg] scale-[0.98]"
+          : animationState === "enter"
+          ? "opacity-0 translate-y-8 scale-[0.985]"
+          : "opacity-100 translate-x-0 translate-y-0 rotate-0 scale-100"
       }`}
     >
       {/* Hidden Audio Element */}
@@ -233,13 +277,13 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
         </div>
 
         {/* Track Info */}
-        <div className="px-6 pt-4 pb-3">
-          <h2 className="text-lg font-bold text-text-primary leading-tight mb-2 line-clamp-2">
+        <div className="px-6 pt-5 pb-4">
+          <h2 className="text-xl font-bold text-text-primary leading-tight mb-2.5 line-clamp-2">
             {submission.title || "Untitled"}
           </h2>
 
           {/* Metadata */}
-          <div className="flex items-center gap-3 text-[10px] font-mono text-text-secondary mb-4">
+          <div className="flex items-center gap-3.5 text-[11px] font-mono text-text-secondary mb-5 flex-wrap">
             <Link
               href={`/profile/${profile?.username ?? "#"}`}
               className="hover:text-text-primary transition-colors font-semibold"
@@ -268,7 +312,7 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
             <button
               onClick={togglePlay}
               disabled={!hasAudio}
-              className="w-9 h-9 rounded-full border border-border bg-background flex items-center justify-center text-text-primary hover:border-border-focus hover:bg-surface transition-all active:scale-95 disabled:opacity-40 shrink-0"
+              className="w-10 h-10 rounded-full border border-border bg-background flex items-center justify-center text-text-primary hover:border-border-focus hover:bg-surface transition-all active:scale-95 disabled:opacity-40 shrink-0"
               aria-label={isPlaying ? "Pause" : "Play"}
             >
               {isPlaying ? <PauseIcon /> : <PlayIcon />}
@@ -278,7 +322,7 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
             <div className="flex-1">
               <div
                 id={`progress-bar-${submission.id}`}
-                className="relative h-1 bg-border cursor-pointer group"
+                className="relative h-1.5 bg-border cursor-pointer group"
                 style={{ borderRadius: "var(--radius-minimal)" }}
                 onClick={handleSeek}
                 onMouseDown={handleDragStart}
@@ -300,7 +344,7 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
             </div>
 
             {/* Time Display */}
-            <div className="text-[9px] font-mono text-text-muted tabular-nums shrink-0">
+            <div className="text-[11px] font-mono text-text-secondary tabular-nums shrink-0">
               {formatTime(currentTime)} / {formatTime(duration || submission.duration_seconds || 0)}
             </div>
           </div>
@@ -319,7 +363,7 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
         {/* Skip Button */}
         <button
           onClick={() => handleSwipe("left")}
-          disabled={isExiting || isPending}
+          disabled={animationState !== "center" || isPending}
           className="w-14 h-14 rounded-full border border-border bg-surface flex items-center justify-center text-text-muted hover:text-text-primary hover:border-border-focus transition-all active:scale-95 disabled:opacity-40"
           aria-label="Skip"
         >
@@ -329,7 +373,7 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
         {/* Like Button - Balanced size */}
         <button
           onClick={() => handleSwipe("right")}
-          disabled={isExiting || isPending || !isAuthenticated}
+          disabled={animationState !== "center" || isPending || !isAuthenticated}
           className="w-14 h-14 rounded-full border border-border bg-surface flex items-center justify-center text-text-primary hover:text-white hover:border-text-primary/40 hover:bg-surface-elevated transition-all active:scale-95 disabled:opacity-40"
           aria-label="Like"
         >

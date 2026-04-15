@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CoverArt } from "@/components/CoverArt";
 import { UploadButton } from "@/components/UploadButton";
 import { SamplePlayer } from "@/components/SamplePlayer";
 import { DownloadButton } from "@/components/DownloadButton";
@@ -20,7 +19,6 @@ export default async function TodayPage() {
   ]);
 
   const isAuthenticated = !!session;
-  const username = session?.profile?.username ?? null;
   const today = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
 
   const todayLabel = new Date().toLocaleDateString("en-US", {
@@ -30,59 +28,60 @@ export default async function TodayPage() {
   });
 
   return (
-    <div className="flex-1 flex flex-col items-center px-4 sm:px-8 lg:px-12 xl:px-16 pt-6 pb-10">
-      <div className="w-full max-w-lg space-y-3">
+    <div className="flex-1 flex flex-col items-center px-4 sm:px-8 lg:px-12 xl:px-16 pt-5 pb-8">
+      <div className="w-full max-w-[52rem] space-y-4">
 
         {/* Date label */}
-        <p className="text-[9px] font-mono tracking-[0.25em] uppercase text-text-muted">
+        <p className="text-center text-[10px] font-mono tracking-[0.2em] uppercase text-text-secondary">
           {todayLabel}
         </p>
 
-        {/* Artwork - larger, more dominant */}
-        <div className="aspect-square w-full overflow-hidden" style={{ borderRadius: 'var(--radius-minimal)' }}>
-          <CoverArt seed={sample ? `sample-${sample.id}` : `no-sample-${today}`} />
-        </div>
-
-        {/* Sample title + artist - stronger hierarchy */}
-        <div className="space-y-1">
-          <p className="text-[8px] font-mono tracking-[0.25em] uppercase text-text-muted">
-            Today&apos;s Sample
-          </p>
-          {sample ? (
-            <>
-              <h1 className="text-2xl font-bold text-text-primary leading-[1.15] tracking-tight">
-                {sample.title}
-              </h1>
-              <p className="text-base text-text-secondary font-medium">{sample.artist}</p>
-            </>
-          ) : (
-            <>
-              <h1 className="text-2xl font-bold text-text-primary leading-[1.15] tracking-tight">
-                No sample today
-              </h1>
-              <p className="text-sm text-text-muted">Check back soon</p>
-            </>
-          )}
-        </div>
-
-        {/* Audio player */}
-        {sample && sample.audio_url && (
-          <SamplePlayer audioUrl={sample.audio_url} />
+        {sample && sample.audio_url ? (
+          <SamplePlayer
+            audioUrl={sample.audio_url}
+            title={sample.title}
+            artist={sample.artist}
+          />
+        ) : (
+          <div className="space-y-2 py-10 text-center">
+            <p className="text-[10px] font-mono tracking-[0.18em] uppercase text-text-secondary">
+              Today&apos;s Sample
+            </p>
+            {sample ? (
+              <>
+                <h1 className="text-[2rem] font-bold text-text-primary leading-[1.1] tracking-tight sm:text-[2.15rem]">
+                  {sample.title}
+                </h1>
+                <p className="text-lg text-text-secondary font-medium leading-snug">{sample.artist}</p>
+                <p className="pt-2 text-[11px] font-mono text-text-muted">
+                  Audio preview unavailable.
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-[2rem] font-bold text-text-primary leading-[1.1] tracking-tight sm:text-[2.15rem]">
+                  No sample today
+                </h1>
+                <p className="text-base text-text-secondary">Check back soon</p>
+              </>
+            )}
+          </div>
         )}
 
         {/* CTAs */}
-        <div className="flex gap-2 items-center">
+        <div className="mx-auto flex w-full max-w-[40rem] gap-2 items-center">
           {sample ? (
             isAuthenticated && session?.user ? (
               <UploadButton
                 sampleId={sample.id}
                 userId={session.user.id}
                 activeDate={today}
+                className="px-3.5 py-2 text-[10px] tracking-[0.14em]"
               />
             ) : (
               <Link
                 href="/sign-in"
-                className="flex-1 btn btn-primary btn-md uppercase tracking-wider"
+                className="flex-1 btn btn-primary btn-md px-3.5 py-2 text-[10px] uppercase tracking-[0.14em]"
               >
                 <UploadIcon />
                 Sign in to Submit
@@ -101,41 +100,23 @@ export default async function TodayPage() {
               audioUrl={sample.audio_url}
               storagePath={sample.storage_path}
               title={sample.title}
+              className="px-3.5 py-2 text-[10px] tracking-[0.14em]"
             />
           )}
         </div>
 
-        {/* Minimal footer - countdown + listen link */}
+        {/* Minimal footer - countdown */}
         {sample && (
-          <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] font-mono uppercase tracking-[0.22em] text-text-muted">
+          <div className="mx-auto flex w-full max-w-[40rem] items-center pt-0">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-text-secondary">
                 Closes in
               </span>
-              <span className="text-[11px] font-mono text-text-secondary tabular-nums font-semibold">
+              <span className="text-[12px] font-mono text-text-primary tabular-nums font-semibold">
                 <CountdownLabel />
               </span>
             </div>
-            <Link
-              href="/listen"
-              className="text-[10px] font-mono font-bold text-text-primary hover:text-white transition-colors uppercase tracking-wide underline underline-offset-2"
-            >
-              Listen →
-            </Link>
           </div>
-        )}
-
-        {/* Session indicator */}
-        {username && (
-          <p className="text-center text-[9px] font-mono text-text-muted pt-1">
-            Signed in as{" "}
-            <Link
-              href={`/profile/${username}`}
-              className="text-text-secondary hover:text-text-primary transition-colors font-semibold"
-            >
-              @{username}
-            </Link>
-          </p>
         )}
 
       </div>

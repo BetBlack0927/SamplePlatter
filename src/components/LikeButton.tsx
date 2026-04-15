@@ -54,7 +54,7 @@ export function LikeButton({
     return (
       <Link
         href="/sign-in"
-        className="text-[10px] font-mono text-text-muted hover:text-text-secondary flex items-center gap-1 transition-colors font-semibold"
+        className="text-[11px] font-mono text-text-secondary hover:text-text-primary flex items-center gap-1 transition-colors font-semibold"
         title="Sign in to like"
         onClick={(e) => e.stopPropagation()}
       >
@@ -68,7 +68,7 @@ export function LikeButton({
     <button
       onClick={handleToggle}
       disabled={isPending}
-      className={`text-[10px] font-mono flex items-center gap-1 transition-colors disabled:opacity-60 font-semibold ${
+      className={`text-[11px] font-mono flex items-center gap-1 transition-colors disabled:opacity-60 font-semibold ${
         liked
           ? "text-text-primary"
           : "text-text-secondary hover:text-text-primary"

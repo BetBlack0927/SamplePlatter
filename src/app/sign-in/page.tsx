@@ -17,13 +17,13 @@ export default async function SignInPage() {
       <div className="w-full max-w-md space-y-6">
         {/* Wordmark */}
         <div className="space-y-3">
-          <div className="text-base text-text-primary tracking-[-0.02em] leading-none">
+          <div className="text-lg text-text-primary tracking-[-0.02em] leading-none">
             <span className="font-semibold">Sample</span>
             <span className="font-normal"> Platter</span>
           </div>
           <div>
-            <h1 className="text-lg font-bold text-text-primary tracking-tight">Welcome back</h1>
-            <p className="text-xs text-text-secondary mt-1">
+            <h1 className="text-xl font-bold text-text-primary tracking-tight">Welcome back</h1>
+            <p className="text-sm text-text-secondary mt-1.5">
               Sign in to submit your flips.
             </p>
           </div>

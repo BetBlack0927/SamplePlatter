@@ -7,6 +7,7 @@ interface DownloadButtonProps {
   storagePath: string;
   /** Sample title — used to name the downloaded file, e.g. "Late Summer" → late-summer.mp3 */
   title: string;
+  className?: string;
 }
 
 /**
@@ -17,7 +18,12 @@ interface DownloadButtonProps {
  * `Content-Disposition: attachment; filename="..."`, so the browser saves it
  * instead of opening it. No blob-fetching, no server round-trip.
  */
-export function DownloadButton({ audioUrl, storagePath, title }: DownloadButtonProps) {
+export function DownloadButton({
+  audioUrl,
+  storagePath,
+  title,
+  className = "",
+}: DownloadButtonProps) {
   const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
 
   const canDownload = !!audioUrl && !!storagePath;
@@ -46,7 +52,7 @@ export function DownloadButton({ audioUrl, storagePath, title }: DownloadButtonP
 
   if (!canDownload) {
     return (
-      <span className="flex items-center gap-1.5 text-text-muted text-[11px] font-mono px-3 py-2.5 cursor-not-allowed opacity-40 select-none">
+      <span className={`flex items-center gap-1.5 text-text-muted text-[12px] font-mono px-3 py-2.5 cursor-not-allowed opacity-40 select-none ${className}`}>
         <DownloadIcon />
         Unavailable
       </span>
@@ -57,7 +63,7 @@ export function DownloadButton({ audioUrl, storagePath, title }: DownloadButtonP
     <button
       onClick={handleDownload}
       disabled={status === "loading"}
-      className="btn btn-secondary btn-md uppercase tracking-wider shrink-0"
+      className={`btn btn-secondary btn-md uppercase tracking-wider shrink-0 ${className}`}
       title={`Download ${title}`}
     >
       {status === "loading" ? (

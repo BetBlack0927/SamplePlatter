@@ -190,10 +190,10 @@ export function UploadModal({
               {/* Header */}
               <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border bg-surface">
                 <div>
-                  <h2 className="text-xs font-bold text-text-primary uppercase tracking-wide">
+                  <h2 className="text-sm font-bold text-text-primary tracking-tight">
                     Upload Your Flip
                   </h2>
-                  <p className="text-[9px] font-mono text-text-muted mt-0.5">
+                  <p className="text-[10px] font-mono text-text-secondary mt-1">
                     MP3 or WAV · max 50 MB
                   </p>
                 </div>
@@ -212,8 +212,8 @@ export function UploadModal({
               <div className="px-4 py-4 space-y-3">
                 {/* Error */}
                 {error && (
-                  <div className="px-3 py-2 bg-error/10 border border-error/30" style={{ borderRadius: 'var(--radius-minimal)' }}>
-                    <p className="text-[10px] font-mono text-error">{error}</p>
+                  <div className="px-3 py-2.5 bg-error/10 border border-error/30" style={{ borderRadius: 'var(--radius-minimal)' }}>
+                    <p className="text-[11px] font-mono text-error">{error}</p>
                   </div>
                 )}
 
@@ -236,10 +236,10 @@ export function UploadModal({
                   {file ? (
                     <>
                       <FileCheckIcon />
-                      <p className="text-[10px] font-mono text-text-primary text-center px-4 truncate max-w-full font-semibold">
+                      <p className="text-[11px] font-mono text-text-primary text-center px-4 truncate max-w-full font-semibold">
                         {file.name}
                       </p>
-                      <p className="text-[9px] font-mono text-text-muted">
+                      <p className="text-[10px] font-mono text-text-muted">
                         {(file.size / (1024 * 1024)).toFixed(1)} MB ·{" "}
                         <span
                           className="text-text-primary hover:text-white font-semibold cursor-pointer underline underline-offset-2"
@@ -257,7 +257,7 @@ export function UploadModal({
                   ) : (
                     <>
                       <AudioIcon />
-                      <p className="text-[10px] font-mono text-text-secondary text-center">
+                      <p className="text-[11px] font-mono text-text-secondary text-center">
                         Drop file or{" "}
                         <span className="text-text-primary font-semibold">click to browse</span>
                       </p>
@@ -280,7 +280,7 @@ export function UploadModal({
                 <div className="space-y-1">
                   <label
                     htmlFor="flip-title"
-                    className="block text-[8px] font-mono uppercase tracking-[0.22em] text-text-muted font-semibold"
+                    className="block text-[11px] font-mono tracking-[0.08em] text-text-secondary font-semibold"
                   >
                     Track Title
                   </label>
@@ -291,7 +291,7 @@ export function UploadModal({
                     onChange={(e) => setTitle(e.target.value)}
                     maxLength={100}
                     placeholder="Name your flip"
-                    className="w-full bg-surface border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
+                    className="w-full bg-surface border border-border px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
                     style={{ borderRadius: 'var(--radius-minimal)' }}
                   />
                 </div>
@@ -337,13 +337,13 @@ export function UploadModal({
 
 function SuccessView() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-10">
+      <div className="flex flex-col items-center justify-center gap-3 px-6 py-10">
       <div className="w-11 h-11 bg-surface-elevated border border-border-focus flex items-center justify-center" style={{ borderRadius: 'var(--radius-minimal)' }}>
         <CheckIcon />
       </div>
       <div className="text-center">
-        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Flip submitted</p>
-        <p className="text-[10px] font-mono text-text-muted mt-1">
+        <p className="text-sm font-bold text-text-primary tracking-tight">Flip submitted</p>
+        <p className="text-[11px] font-mono text-text-muted mt-1">
           Your track is live on the Listen page.
         </p>
       </div>

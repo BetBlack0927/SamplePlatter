@@ -20,8 +20,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProfilePage({ params }: Props) {
   const { username } = await params;
 
-  const session = await getCurrentSession();
-  const pageData = await getProfilePageData(username, session?.user.id);
+  const sessionPromise = getCurrentSession();
+  const pageDataPromise = getProfilePageData(username);
+  const [session, pageData] = await Promise.all([sessionPromise, pageDataPromise]);
 
   if (!pageData) notFound();
 
@@ -71,14 +72,15 @@ function FlipRow({
   return (
     <div>
       {submission.sample && (
-        <div className="flex items-center gap-2 px-1 mb-0.5">
-          <span className="text-[9px] font-mono text-text-muted font-semibold tabular-nums">
+        <div className="flex items-center gap-2 px-1 mb-1">
+          <span className="text-[10px] font-mono text-text-secondary font-semibold tabular-nums">
             {formatDate(submission.sample.active_date)}
           </span>
-          <span className="text-text-muted text-[9px]">·</span>
+          <span className="text-text-muted text-[10px]">·</span>
           <Link
             href="/"
-            className="text-[9px] font-mono text-text-muted hover:text-text-secondary transition-colors truncate"
+            prefetch={true}
+            className="text-[10px] font-mono text-text-muted hover:text-text-secondary transition-colors truncate"
           >
             {submission.sample.title}
           </Link>
@@ -93,9 +95,9 @@ function FlipRow({
 
 function EmptyFlips({ isOwnProfile }: { isOwnProfile: boolean }) {
   return (
-    <div className="py-12 flex flex-col items-center gap-2 border border-dashed border-border text-center" style={{ borderRadius: 'var(--radius-minimal)' }}>
-      <p className="text-xs text-text-secondary font-semibold">No flips yet</p>
-      <p className="text-[10px] font-mono text-text-muted">
+    <div className="py-12 flex flex-col items-center gap-2.5 border border-dashed border-border text-center" style={{ borderRadius: 'var(--radius-minimal)' }}>
+      <p className="text-sm text-text-secondary font-semibold">No flips yet</p>
+      <p className="text-[11px] font-mono text-text-muted">
         {isOwnProfile
           ? "Submit your first flip on the Today page."
           : "This producer hasn't submitted yet."}
@@ -103,7 +105,7 @@ function EmptyFlips({ isOwnProfile }: { isOwnProfile: boolean }) {
       {isOwnProfile && (
         <Link
           href="/"
-          className="mt-2 text-[10px] font-mono font-bold text-text-primary hover:text-white transition-colors uppercase tracking-wide underline underline-offset-2"
+          className="mt-2 text-[11px] font-mono font-bold text-text-primary hover:text-white transition-colors tracking-[0.12em] underline underline-offset-2"
         >
           Go to Today →
         </Link>
