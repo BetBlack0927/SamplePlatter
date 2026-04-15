@@ -34,8 +34,12 @@ export async function recordSubmissionPlay(
     };
   }
 
-  const previousCount = submission.play_count ?? 0;
-  const { data, error } = await supabase.rpc("record_submission_play", {
+  const previousCount =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((submission as any)?.play_count as number | undefined) ?? 0;
+  // Database function typing is hand-authored in this repo; cast to keep builds stable.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("record_submission_play", {
     p_submission_id: submissionId,
     p_session_id: sessionId,
     p_user_id: session?.user.id ?? null,

@@ -22,7 +22,8 @@ export function SwipeFeed({
   const router = useRouter();
   const [localQueue, advanceQueue] = useOptimistic(
     submissions,
-    (currentQueue: Submission[]) => currentQueue.slice(1)
+    (currentQueue: Submission[], action: "advance") =>
+      action === "advance" ? currentQueue.slice(1) : currentQueue
   );
   const [outgoingCard, setOutgoingCard] = useState<{
     submission: Submission;
@@ -72,7 +73,7 @@ export function SwipeFeed({
         }, ENTER_DELAY_MS);
 
         scheduleTimeout(() => {
-          advanceQueue();
+          advanceQueue("advance");
         }, EXIT_DURATION_MS);
 
         scheduleTimeout(() => {
@@ -82,7 +83,7 @@ export function SwipeFeed({
         }, EXIT_DURATION_MS + ENTER_DURATION_MS);
       } else {
         scheduleTimeout(() => {
-          advanceQueue();
+          advanceQueue("advance");
         }, EXIT_DURATION_MS);
 
         scheduleTimeout(() => {
