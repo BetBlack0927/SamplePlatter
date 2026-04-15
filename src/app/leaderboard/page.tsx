@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   title: "Leaderboard",
 };
 
+// Revalidate every 30 seconds for better performance
+export const revalidate = 30;
+
 const PERIODS: { id: LeaderboardPeriod; label: string }[] = [
   { id: "today", label: "Today" },
   { id: "week", label: "This Week" },

@@ -72,8 +72,8 @@ export function SwipeCard({ submission, isAuthenticated, onSwipe }: SwipeCardPro
           await toggleLike(submission.id);
         }
 
-        // Refresh in background to sync state
-        router.refresh();
+        // Note: router.refresh() is NOT called here to avoid slowing down navigation
+        // SwipeFeed will handle refetch only when queue becomes empty
       } catch (err) {
         console.error("Swipe action failed:", err);
         // Don't block UI - save failed but user already moved on

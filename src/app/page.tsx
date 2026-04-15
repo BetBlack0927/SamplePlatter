@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   title: "Today",
 };
 
+// Revalidate every 60 seconds for better performance
+export const revalidate = 60;
+
 export default async function TodayPage() {
   const [session, sample] = await Promise.all([
     getCurrentSession(),
