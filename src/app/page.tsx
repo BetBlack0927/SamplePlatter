@@ -3,6 +3,7 @@ import Link from "next/link";
 import { UploadButton } from "@/components/UploadButton";
 import { SamplePlayer } from "@/components/SamplePlayer";
 import { DownloadButton } from "@/components/DownloadButton";
+import { CountdownLabel } from "@/components/CountdownLabel";
 import { getCurrentSession, getTodaySample } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = {
@@ -122,19 +123,6 @@ export default async function TodayPage() {
       </div>
     </div>
   );
-}
-
-/* ─── Countdown (static — replace with a client component for live ticking) ── */
-
-function CountdownLabel() {
-  const now = new Date();
-  const midnight = new Date(now);
-  midnight.setUTCHours(24, 0, 0, 0);
-  const diffMs = midnight.getTime() - now.getTime();
-  const h = Math.floor(diffMs / 3_600_000);
-  const m = Math.floor((diffMs % 3_600_000) / 60_000);
-  const s = Math.floor((diffMs % 60_000) / 1_000);
-  return <>{`${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`}</>;
 }
 
 /* ─── Icons ─────────────────────────────────────────────────── */
