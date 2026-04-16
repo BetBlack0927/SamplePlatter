@@ -24,7 +24,7 @@ export function SwipeCard({
   const [isPending, startTransition] = useTransition();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(submission.duration_seconds ?? 0);
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +104,9 @@ export function SwipeCard({
 
   const handleLoadedMetadata = useCallback(() => {
     if (!audioRef.current) return;
-    setDuration(audioRef.current.duration);
+    if (Number.isFinite(audioRef.current.duration) && audioRef.current.duration > 0) {
+      setDuration(audioRef.current.duration);
+    }
   }, []);
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -113,9 +115,14 @@ export function SwipeCard({
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = x / rect.width;
-    const newTime = percentage * duration;
+    const totalDuration =
+      audioRef.current.duration || duration || submission.duration_seconds || 0;
+    if (!totalDuration) return;
+
+    const newTime = percentage * totalDuration;
     
     audioRef.current.currentTime = newTime;
+    setDuration(totalDuration);
     setCurrentTime(newTime);
     setPlaybackProgress(percentage);
   };
@@ -134,12 +141,17 @@ export function SwipeCard({
     const rect = progressBar.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, x / rect.width));
-    const newTime = percentage * duration;
+    const totalDuration =
+      audioRef.current.duration || duration || submission.duration_seconds || 0;
+    if (!totalDuration) return;
+
+    const newTime = percentage * totalDuration;
     
     audioRef.current.currentTime = newTime;
+    setDuration(totalDuration);
     setCurrentTime(newTime);
     setPlaybackProgress(percentage);
-  }, [duration, isDragging, submission.id]);
+  }, [duration, isDragging, submission.duration_seconds, submission.id]);
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
@@ -169,21 +181,6 @@ export function SwipeCard({
       };
     }
   }, [handleDragEnd, handleDragMove, isDragging]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
-    audio.addEventListener("ended", handleEnded);
-
-    return () => {
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      audio.removeEventListener("ended", handleEnded);
-    };
-  }, [handleEnded, handleLoadedMetadata, handleTimeUpdate]);
 
   useEffect(() => {
     isRecordingPlayRef.current = false;
@@ -245,17 +242,24 @@ export function SwipeCard({
     >
       {/* Hidden Audio Element */}
       {hasAudio && (
-        <audio ref={audioRef} src={submission.audio_url} preload="metadata" />
+        <audio
+          ref={audioRef}
+          src={submission.audio_url}
+          preload="metadata"
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onEnded={handleEnded}
+        />
       )}
 
       <div
         className="border px-4 pt-4 pb-6 shadow-[0_26px_90px_rgba(0,0,0,0.55)]"
         style={{
           borderRadius: "1.8rem",
-          borderColor: "#8f8f8b",
-          backgroundColor: "#e7e7e3",
+          borderColor: "#70736f",
+          backgroundColor: "#b8b8b3",
           boxShadow:
-            "inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -18px 40px rgba(0,0,0,0.05), 0 26px 90px rgba(0,0,0,0.55)",
+            "inset 0 1px 0 rgba(255,255,255,0.32), inset 0 -18px 40px rgba(0,0,0,0.14), 0 26px 90px rgba(0,0,0,0.55)",
         }}
       >
         <div
@@ -263,10 +267,10 @@ export function SwipeCard({
           style={{
             borderRadius: "0.4rem",
             borderColor: "#4e5356",
-            backgroundColor: "#ddebf3",
+            backgroundColor: "#f7f7f4",
           }}
         >
-          <div className="flex items-center justify-between border-b px-3 py-1.5 text-[10px] font-bold text-[#1b1b1b]" style={{ borderColor: "#9fb5c2", backgroundColor: "#d2e2eb" }}>
+          <div className="flex items-center justify-between border-b px-3 py-1.5 text-[10px] font-bold text-[#1b1b1b]" style={{ borderColor: "#d7dbdd", backgroundColor: "#eef0f1" }}>
             <span className="inline-flex items-center gap-1">
               <span className="h-0 w-0 border-y-[4px] border-y-transparent border-l-[6px] border-l-[#5c84a3]" />
               {isPlaying ? "Now Playing" : "Paused"}
@@ -314,7 +318,7 @@ export function SwipeCard({
               <div
                 id={`progress-bar-${submission.id}`}
                 className="relative h-3 cursor-pointer overflow-hidden border"
-                style={{ borderColor: "#8aa8bb", borderRadius: "0.18rem", backgroundColor: "#eef6fb" }}
+                style={{ borderColor: "#d6dbe0", borderRadius: "0.18rem", backgroundColor: "#ffffff" }}
                 onClick={handleSeek}
                 onMouseDown={handleDragStart}
               >
@@ -353,7 +357,7 @@ export function SwipeCard({
           </div>
         </div>
 
-        <div className="relative mx-auto mt-6 h-[13.25rem] w-[13.25rem] rounded-full border border-[#c9c9c5] bg-[#d8d8d5] shadow-[inset_0_2px_12px_rgba(255,255,255,0.75),inset_0_-6px_18px_rgba(0,0,0,0.08)]">
+        <div className="relative mx-auto mt-6 h-[13.25rem] w-[13.25rem] rounded-full border border-[#a6a6a2] bg-[#b2b2ad] shadow-[inset_0_2px_12px_rgba(255,255,255,0.32),inset_0_-6px_18px_rgba(0,0,0,0.16)]">
           <div className="absolute inset-x-0 top-5 text-center text-[12px] font-bold tracking-[0.14em] text-[#8d8d89]">
             MENU
           </div>
@@ -390,7 +394,7 @@ export function SwipeCard({
             onClick={togglePlay}
             disabled={!hasAudio}
             aria-label={isPlaying ? "Pause track" : "Play track"}
-            className="absolute left-1/2 top-1/2 flex h-[4.45rem] w-[4.45rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#ecece8] bg-[#f6f6f2] text-[#838380] shadow-[inset_0_1px_3px_rgba(255,255,255,0.9),0_1px_2px_rgba(0,0,0,0.08)] transition-all active:scale-95 disabled:opacity-40"
+            className="absolute left-1/2 top-1/2 flex h-[4.45rem] w-[4.45rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#ddddda] bg-[#ecece8] text-[#7c7c78] shadow-[inset_0_1px_3px_rgba(255,255,255,0.7),0_1px_2px_rgba(0,0,0,0.10)] transition-all active:scale-95 disabled:opacity-40"
           >
             <span className="text-[9px] font-bold uppercase tracking-[0.18em]">
               {isPlaying ? "Pause" : "Play"}

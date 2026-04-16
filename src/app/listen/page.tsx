@@ -40,7 +40,7 @@ export default async function ListenPage() {
   const sampleTitle = sample?.title ?? null;
 
   return (
-    <div className="min-h-screen">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Compact context bar */}
       <div className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-10">
         <div className="mx-auto flex max-w-3xl items-center justify-center px-4 py-3">
@@ -64,19 +64,21 @@ export default async function ListenPage() {
         </div>
       </div>
 
-      <div className="px-4 pt-8 pb-1 text-center">
+      <div className="px-4 pt-8 pb-2 text-center shrink-0">
         <h1 className="text-[2rem] font-bold uppercase tracking-[0.18em] text-text-primary sm:text-[2.4rem]">
           Discover
         </h1>
       </div>
 
       {/* Swipe Feed */}
-      <SwipeFeed
-        submissions={unreviewedSubmissions}
-        totalSubmissionCount={totalSubmissions.length}
-        isAuthenticated={isAuthenticated}
-        hasSample={!!sample}
-      />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <SwipeFeed
+          submissions={unreviewedSubmissions}
+          totalSubmissionCount={totalSubmissions.length}
+          isAuthenticated={isAuthenticated}
+          hasSample={!!sample}
+        />
+      </div>
     </div>
   );
 }

@@ -207,8 +207,8 @@ export function SwipeFeed({
   }
 
   return (
-    <div className="py-12">
-      <div className="relative w-full max-w-md mx-auto min-h-[46rem]">
+    <div className="flex h-full flex-col justify-center px-4 pb-6">
+      <div className="relative mx-auto w-full max-w-md min-h-[36rem]">
         {showCard && !isTransitioning && (
           <SwipeCard
             submission={currentSubmission}
@@ -244,7 +244,7 @@ export function SwipeFeed({
 
       {/* Footer Hint */}
       {!isAuthenticated && (
-        <div className="text-center mt-12">
+        <div className="mt-6 text-center shrink-0">
           <p className="text-[11px] font-mono text-text-muted">
             <Link
               href="/sign-in"
