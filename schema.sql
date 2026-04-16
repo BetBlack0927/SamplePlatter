@@ -15,6 +15,8 @@ create table public.profiles (
   display_name  text not null,
   avatar_url    text,
   bio           text,
+  soundcloud_url text,
+  spotify_url   text,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );

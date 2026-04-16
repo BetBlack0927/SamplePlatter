@@ -11,6 +11,8 @@ export interface Profile {
   display_name: string;
   avatar_url: string | null;
   bio: string | null;
+  soundcloud_url: string | null;
+  spotify_url: string | null;
   created_at: string;
   updated_at: string;
 }

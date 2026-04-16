@@ -29,7 +29,7 @@ const getCurrentSessionCached = cache(async (): Promise<SessionData | null> => {
 
   const { data } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, bio, created_at, updated_at")
+    .select("*")
     .eq("id", user.id)
     .single();
 
@@ -139,7 +139,7 @@ async function fetchSubmissions(
   const userIds = [...new Set(typedRows.map((r) => r.user_id as string))];
   const profilesPromise = supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, bio, created_at, updated_at")
+    .select("*")
     .in("id", userIds);
 
   const profileMap = new Map(
@@ -240,7 +240,7 @@ export async function getUnreviewedSubmissions(
   const userIds = [...new Set(unreviewedRows.map((r) => r.user_id as string))];
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, bio, created_at, updated_at")
+    .select("*")
     .in("id", userIds);
 
   const profileMap = new Map(

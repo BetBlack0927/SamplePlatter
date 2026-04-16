@@ -20,6 +20,8 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
 
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [bio, setBio] = useState(profile.bio || "");
+  const [soundcloudUrl, setSoundcloudUrl] = useState(profile.soundcloud_url || "");
+  const [spotifyUrl, setSpotifyUrl] = useState(profile.spotify_url || "");
   const [avatarUrl] = useState(profile.avatar_url || "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -118,6 +120,8 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
         formData.set("display_name", displayName);
         formData.set("bio", bio);
         formData.set("avatar_url", finalAvatarUrl);
+        formData.set("soundcloud_url", soundcloudUrl);
+        formData.set("spotify_url", spotifyUrl);
 
         const result = await updateProfile(formData);
 
@@ -294,6 +298,44 @@ export function EditProfileModal({ profile, onClose }: EditProfileModalProps) {
                   className="w-full bg-surface border border-border px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors resize-none"
                   style={{ borderRadius: "var(--radius-minimal)" }}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1">
+                  <label
+                    htmlFor="soundcloud_url"
+                    className="block text-[11px] font-mono tracking-[0.08em] text-text-secondary font-semibold"
+                  >
+                    SoundCloud Link
+                  </label>
+                  <input
+                    id="soundcloud_url"
+                    type="url"
+                    value={soundcloudUrl}
+                    onChange={(e) => setSoundcloudUrl(e.target.value)}
+                    placeholder="https://soundcloud.com/your-name"
+                    className="w-full bg-surface border border-border px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
+                    style={{ borderRadius: "var(--radius-minimal)" }}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="spotify_url"
+                    className="block text-[11px] font-mono tracking-[0.08em] text-text-secondary font-semibold"
+                  >
+                    Spotify Link
+                  </label>
+                  <input
+                    id="spotify_url"
+                    type="url"
+                    value={spotifyUrl}
+                    onChange={(e) => setSpotifyUrl(e.target.value)}
+                    placeholder="https://open.spotify.com/artist/..."
+                    className="w-full bg-surface border border-border px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
+                    style={{ borderRadius: "var(--radius-minimal)" }}
+                  />
+                </div>
               </div>
             </div>
 

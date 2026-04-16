@@ -10,6 +10,13 @@ import {
 import type { LeaderboardPeriod, ProducerStat } from "@/lib/supabase/queries";
 import { SortTabs } from "@/components/SortTabs";
 
+interface RankCertification {
+  label: string;
+  rowStyle: React.CSSProperties;
+  rankColor: string;
+  labelColor: string;
+}
+
 export const metadata: Metadata = {
   title: "Leaderboard",
 };
@@ -134,22 +141,22 @@ function ProducerRow({
   producer: ProducerStat;
   rank: number;
 }) {
-  const rankColor =
-    rank === 1
-      ? "text-text-primary"
-      : rank <= 3
-      ? "text-text-secondary"
-      : "text-text-muted";
+  const certification = getRankCertification(rank);
 
   return (
     <Link
       href={`/profile/${producer.username}`}
       prefetch={true}
       className="group flex items-center gap-3 px-3 py-2.5 bg-surface hover:bg-surface-elevated border-l-2 border-l-transparent hover:border-l-accent/40 border-y border-y-transparent hover:border-y-border transition-all duration-100"
-      style={{ borderRadius: 'var(--radius-minimal)' }}
+      style={{
+        borderRadius: "var(--radius-minimal)",
+        borderLeftColor: certification ? certification.rowStyle.borderLeftColor : undefined,
+        backgroundColor: certification ? certification.rowStyle.backgroundColor : undefined,
+      }}
     >
       <span
-        className={`text-[11px] font-mono w-4 text-right shrink-0 tabular-nums font-bold ${rankColor}`}
+        className="text-[11px] font-mono w-4 text-right shrink-0 tabular-nums font-bold"
+        style={{ color: certification ? certification.rankColor : undefined }}
       >
         {rank}
       </span>
@@ -159,9 +166,19 @@ function ProducerRow({
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-text-primary truncate group-hover:text-white transition-colors leading-tight">
-          {producer.display_name}
-        </p>
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="min-w-0 text-sm font-bold text-text-primary truncate group-hover:text-white transition-colors leading-tight">
+            {producer.display_name}
+          </p>
+          {certification ? (
+            <span
+              className="shrink-0 text-[8px] font-mono font-bold tracking-[0.18em] uppercase"
+              style={{ color: certification.labelColor }}
+            >
+              {certification.label}
+            </span>
+          ) : null}
+        </div>
         <div className="flex items-center gap-3 mt-1">
           <span className="text-[10px] font-mono text-text-secondary font-semibold">
             {producer.total_likes} likes
@@ -183,4 +200,41 @@ function EmptySection({ message }: { message: string }) {
       <p className="text-[11px] font-mono text-text-muted">{message}</p>
     </div>
   );
+}
+
+function getRankCertification(rank: number): RankCertification | null {
+  switch (rank) {
+    case 1:
+      return {
+        label: "Diamond",
+        rowStyle: {
+          borderLeftColor: "#7fe7ff",
+          backgroundColor: "rgba(127, 231, 255, 0.14)",
+        },
+        rankColor: "#dffbff",
+        labelColor: "#9feeff",
+      };
+    case 2:
+      return {
+        label: "Platinum",
+        rowStyle: {
+          borderLeftColor: "#d6dce8",
+          backgroundColor: "rgba(214, 220, 232, 0.14)",
+        },
+        rankColor: "#f5f7fb",
+        labelColor: "#e7edf7",
+      };
+    case 3:
+      return {
+        label: "Gold",
+        rowStyle: {
+          borderLeftColor: "#d7af44",
+          backgroundColor: "rgba(215, 175, 68, 0.14)",
+        },
+        rankColor: "#ffe8a9",
+        labelColor: "#f4cf6d",
+      };
+    default:
+      return null;
+  }
 }

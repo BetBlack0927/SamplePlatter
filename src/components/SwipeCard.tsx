@@ -217,9 +217,10 @@ export function SwipeCard({
   const waveformBars = useMemo(
     () =>
       Array.from({ length: 60 }, (_, i) => {
-        const seed = submission.id.charCodeAt(i % submission.id.length) || 0;
-        const h = 20 + Math.sin(i * 0.5) * 55 + (seed % 18);
-        return Math.min(100, Math.max(20, h));
+        const noiseA = seededWaveformValue(submission.id, i);
+        const noiseB = seededWaveformValue(submission.id, i + 97);
+        const h = 18 + noiseA * 72 + noiseB * 10;
+        return Math.min(92, Math.max(16, h));
       }),
     [submission.id]
   );
@@ -232,7 +233,7 @@ export function SwipeCard({
 
   return (
     <div
-      className={`relative w-full max-w-md mx-auto transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      className={`relative w-full max-w-[20rem] mx-auto transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
         animationState === "exit-left"
           ? "opacity-0 -translate-x-[118%] translate-y-1 rotate-[-10deg] scale-[0.98]"
           : animationState === "exit-right"
@@ -247,107 +248,154 @@ export function SwipeCard({
         <audio ref={audioRef} src={submission.audio_url} preload="metadata" />
       )}
 
-      {/* Card */}
       <div
-        className="bg-surface border border-border overflow-hidden"
-        style={{ borderRadius: "var(--radius-minimal)" }}
+        className="border px-4 pt-4 pb-6 shadow-[0_26px_90px_rgba(0,0,0,0.55)]"
+        style={{
+          borderRadius: "1.8rem",
+          borderColor: "#8f8f8b",
+          backgroundColor: "#e7e7e3",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -18px 40px rgba(0,0,0,0.05), 0 26px 90px rgba(0,0,0,0.55)",
+        }}
       >
-        {/* Waveform Visual - No Controls */}
-        <div className="relative bg-black aspect-square flex items-center justify-center px-6">
-          <div className="flex items-end justify-center gap-0.5 h-40 w-full">
-            {waveformBars.map((h, i) => {
-              const barProgress = i / waveformBars.length;
-              const isPlayed = barProgress < playbackProgress;
-              return (
-                <div
-                  key={i}
-                  className={`flex-1 transition-all duration-150 ${
-                    isPlayed
-                      ? "bg-text-primary"
-                      : "bg-border-focus"
-                  } ${isPlaying && barProgress > playbackProgress - 0.05 && barProgress < playbackProgress + 0.05 ? "animate-pulse" : ""}`}
-                  style={{ 
-                    height: `${h}%`, 
-                    borderRadius: "var(--radius-minimal)",
-                  }}
-                />
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Track Info */}
-        <div className="px-6 pt-5 pb-4">
-          <h2 className="text-xl font-bold text-text-primary leading-tight mb-2.5 line-clamp-2">
-            {submission.title || "Untitled"}
-          </h2>
-
-          {/* Metadata */}
-          <div className="flex items-center gap-3.5 text-[11px] font-mono text-text-secondary mb-5 flex-wrap">
-            <Link
-              href={`/profile/${profile?.username ?? "#"}`}
-              className="hover:text-text-primary transition-colors font-semibold"
-            >
-              by {profile?.display_name ?? "Unknown"}
-            </Link>
-            <span className="text-text-muted">·</span>
-            <span className="flex items-center gap-1 text-text-muted">
-              <HeartIcon filled={false} />
-              {submission.like_count ?? 0}
+        <div
+          className="overflow-hidden border-[3px] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
+          style={{
+            borderRadius: "0.4rem",
+            borderColor: "#4e5356",
+            backgroundColor: "#ddebf3",
+          }}
+        >
+          <div className="flex items-center justify-between border-b px-3 py-1.5 text-[10px] font-bold text-[#1b1b1b]" style={{ borderColor: "#9fb5c2", backgroundColor: "#d2e2eb" }}>
+            <span className="inline-flex items-center gap-1">
+              <span className="h-0 w-0 border-y-[4px] border-y-transparent border-l-[6px] border-l-[#5c84a3]" />
+              {isPlaying ? "Now Playing" : "Paused"}
             </span>
-            <span className="text-text-muted">·</span>
-            {submission.created_at && (
-              <span className="text-text-muted">
-                {new Date(submission.created_at).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-            )}
+            <span>{Math.max(1, submission.like_count ?? 1)} of 14</span>
           </div>
 
-          {/* Audio Controls Strip */}
-          <div className="flex items-center gap-3">
-            {/* Play/Pause Button */}
-            <button
-              onClick={togglePlay}
-              disabled={!hasAudio}
-              className="w-10 h-10 rounded-full border border-border bg-background flex items-center justify-center text-text-primary hover:border-border-focus hover:bg-surface transition-all active:scale-95 disabled:opacity-40 shrink-0"
-              aria-label={isPlaying ? "Pause" : "Play"}
-            >
-              {isPlaying ? <PauseIcon /> : <PlayIcon />}
-            </button>
-
-            {/* Progress Bar / Scrubber */}
-            <div className="flex-1">
+          <div className="px-3 pt-3 pb-2">
+            <div className="flex gap-3">
               <div
-                id={`progress-bar-${submission.id}`}
-                className="relative h-1.5 bg-border cursor-pointer group"
-                style={{ borderRadius: "var(--radius-minimal)" }}
-                onClick={handleSeek}
-                onMouseDown={handleDragStart}
+                className="h-20 w-20 shrink-0 overflow-hidden border-2"
+                style={{ borderColor: "#2e3940", borderRadius: "0.18rem" }}
               >
-                {/* Progress Fill */}
-                <div
-                  className="absolute left-0 top-0 h-full bg-text-primary transition-all"
-                  style={{ 
-                    width: `${playbackProgress * 100}%`,
-                    borderRadius: "var(--radius-minimal)",
-                  }}
-                />
-                {/* Scrubber Knob */}
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-text-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ left: `${playbackProgress * 100}%`, marginLeft: "-6px" }}
-                />
+                {profile?.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.display_name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-[#1f2a23] text-[1.1rem] font-bold text-[#d9dedb]">
+                    {profile?.username?.slice(0, 2).toUpperCase() ?? "??"}
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1 space-y-1 text-[#161616]">
+                <h2 className="line-clamp-2 text-[1.02rem] font-bold leading-[1.05]">
+                  {submission.title || "Untitled"}
+                </h2>
+                <Link
+                  href={`/profile/${profile?.username ?? "#"}`}
+                  className="block truncate text-[13px] font-semibold text-[#202020] hover:underline"
+                >
+                  {profile?.display_name ?? "Unknown"}
+                </Link>
+                <p className="text-[11px] font-semibold text-[#4d4d4d]">
+                  {submission.like_count ?? 0} like{(submission.like_count ?? 0) === 1 ? "" : "s"}
+                </p>
               </div>
             </div>
 
-            {/* Time Display */}
-            <div className="text-[11px] font-mono text-text-secondary tabular-nums shrink-0">
-              {formatTime(currentTime)} / {formatTime(duration || submission.duration_seconds || 0)}
+            <div className="mt-3 space-y-1.5">
+              <div
+                id={`progress-bar-${submission.id}`}
+                className="relative h-3 cursor-pointer overflow-hidden border"
+                style={{ borderColor: "#8aa8bb", borderRadius: "0.18rem", backgroundColor: "#eef6fb" }}
+                onClick={handleSeek}
+                onMouseDown={handleDragStart}
+              >
+                <div
+                  className="absolute inset-y-0 left-0 transition-all"
+                  style={{
+                    width: `${playbackProgress * 100}%`,
+                    backgroundColor: "#6fb8ee",
+                  }}
+                />
+                <div className="absolute inset-0 flex items-end gap-px px-[2px] pb-[2px]">
+                  {waveformBars.slice(0, 40).map((h, i) => {
+                    const barProgress = i / 40;
+                    const isPlayed = barProgress < playbackProgress;
+                    return (
+                      <div
+                        key={i}
+                        className={isPlayed ? (isPlaying ? "bg-[#2f81d8]" : "bg-[#597e9f]") : "bg-[#a7bbc8]"}
+                        style={{
+                          height: `${Math.max(18, h * 0.45)}%`,
+                          width: "100%",
+                          borderRadius: "1px",
+                          opacity: isPlayed ? 0.95 : 0.7,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] font-semibold text-[#222]">
+                <span>{formatTime(currentTime)}</span>
+                <span>-{formatTime((duration || submission.duration_seconds || 0) - currentTime)}</span>
+              </div>
             </div>
           </div>
+        </div>
+
+        <div className="relative mx-auto mt-6 h-[13.25rem] w-[13.25rem] rounded-full border border-[#c9c9c5] bg-[#d8d8d5] shadow-[inset_0_2px_12px_rgba(255,255,255,0.75),inset_0_-6px_18px_rgba(0,0,0,0.08)]">
+          <div className="absolute inset-x-0 top-5 text-center text-[12px] font-bold tracking-[0.14em] text-[#8d8d89]">
+            MENU
+          </div>
+
+          <WheelButton
+            className="absolute left-[1.05rem] top-1/2 -translate-y-1/2"
+            onClick={() => handleSwipe("left")}
+            disabled={animationState !== "center" || isPending}
+            ariaLabel="Skip"
+          >
+            <XIcon soft />
+          </WheelButton>
+
+          <WheelButton
+            className="absolute right-[1.05rem] top-1/2 -translate-y-1/2"
+            onClick={() => handleSwipe("right")}
+            disabled={animationState !== "center" || isPending || !isAuthenticated}
+            variant="primary"
+            ariaLabel="Like"
+          >
+            <HeartIcon filled={false} large />
+          </WheelButton>
+
+          <WheelButton
+            className="absolute bottom-[1.05rem] left-1/2 -translate-x-1/2"
+            onClick={togglePlay}
+            disabled={!hasAudio}
+            ariaLabel={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? <PauseIcon soft /> : <PlayIcon soft />}
+          </WheelButton>
+
+          <button
+            onClick={togglePlay}
+            disabled={!hasAudio}
+            aria-label={isPlaying ? "Pause track" : "Play track"}
+            className="absolute left-1/2 top-1/2 flex h-[4.45rem] w-[4.45rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#ecece8] bg-[#f6f6f2] text-[#838380] shadow-[inset_0_1px_3px_rgba(255,255,255,0.9),0_1px_2px_rgba(0,0,0,0.08)] transition-all active:scale-95 disabled:opacity-40"
+          >
+            <span className="text-[9px] font-bold uppercase tracking-[0.18em]">
+              {isPlaying ? "Pause" : "Play"}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -357,46 +405,23 @@ export function SwipeCard({
           <p className="text-xs text-error font-semibold">{error}</p>
         </div>
       )}
-
-      {/* Action Buttons - Balanced */}
-      <div className="flex items-center justify-center gap-8 mt-10">
-        {/* Skip Button */}
-        <button
-          onClick={() => handleSwipe("left")}
-          disabled={animationState !== "center" || isPending}
-          className="w-14 h-14 rounded-full border border-border bg-surface flex items-center justify-center text-text-muted hover:text-text-primary hover:border-border-focus transition-all active:scale-95 disabled:opacity-40"
-          aria-label="Skip"
-        >
-          <XIcon />
-        </button>
-
-        {/* Like Button - Balanced size */}
-        <button
-          onClick={() => handleSwipe("right")}
-          disabled={animationState !== "center" || isPending || !isAuthenticated}
-          className="w-14 h-14 rounded-full border border-border bg-surface flex items-center justify-center text-text-primary hover:text-white hover:border-text-primary/40 hover:bg-surface-elevated transition-all active:scale-95 disabled:opacity-40"
-          aria-label="Like"
-        >
-          <HeartIcon filled={false} large />
-        </button>
-      </div>
     </div>
   );
 }
 
 /* ─── Icons ──────────────────────────────────────────────────── */
 
-function PlayIcon() {
+function PlayIcon({ soft = false }: { soft?: boolean }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-text-primary ml-0.5">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={soft ? "text-[#8d8d89] ml-0.5" : "text-text-primary ml-0.5"}>
       <path d="M8 5v14l11-7z" />
     </svg>
   );
 }
 
-function PauseIcon() {
+function PauseIcon({ soft = false }: { soft?: boolean }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-text-primary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={soft ? "text-[#8d8d89]" : "text-text-primary"}>
       <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
     </svg>
   );
@@ -420,14 +445,14 @@ function HeartIcon({ filled, large }: { filled: boolean; large?: boolean }) {
   );
 }
 
-function XIcon() {
+function XIcon({ soft = false }: { soft?: boolean }) {
   return (
     <svg
       width="22"
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
+      stroke={soft ? "#8d8d89" : "currentColor"}
       strokeWidth="1.5"
       strokeLinecap="round"
     >
@@ -435,4 +460,46 @@ function XIcon() {
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
+}
+
+function WheelButton({
+  className,
+  onClick,
+  disabled,
+  variant = "secondary",
+  ariaLabel,
+  children,
+}: {
+  className: string;
+  onClick: () => void;
+  disabled: boolean;
+  variant?: "secondary" | "primary";
+  ariaLabel: string;
+  children: React.ReactNode;
+}) {
+  const isPrimary = variant === "primary";
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className={`${className} inline-flex h-12 w-12 items-center justify-center rounded-full border shadow-[inset_0_1px_2px_rgba(255,255,255,0.85),0_2px_6px_rgba(0,0,0,0.14)] transition-all active:scale-95 disabled:opacity-40 ${
+        isPrimary
+          ? "border-[#d6d6d1] bg-[#f7f7f3] text-[#9b9b96] hover:border-[#c6c6c1] hover:bg-white hover:text-[#7e7ee8]"
+          : "border-[#d2d2cd] bg-[#f2f2ee] text-[#94948f] hover:border-[#c0c0bb] hover:bg-[#fbfbf8] hover:text-[#72726e]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function seededWaveformValue(seed: string, index: number) {
+  let h = 2166136261 ^ index;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i) + index * 17;
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 1000) / 1000;
 }

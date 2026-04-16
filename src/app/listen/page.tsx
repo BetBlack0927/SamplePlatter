@@ -41,39 +41,33 @@ export default async function ListenPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Minimal header */}
+      {/* Compact context bar */}
       <div className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 py-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-lg font-bold text-text-primary tracking-tight">
-                Discover
-              </h1>
-              <p className="text-[11px] text-text-secondary mt-1 font-mono">
-                {today}
-                {sampleTitle && (
-                  <>
-                    {" · "}
-                    <Link
-                      href="/"
-                      className="hover:text-text-primary transition-colors font-semibold"
-                    >
-                      {sampleTitle}
-                    </Link>
-                  </>
-                )}
-              </p>
-            </div>
-
-            <Link
-              href="/"
-              className="text-[11px] font-mono font-bold text-text-secondary hover:text-text-primary transition-colors tracking-[0.12em]"
-              style={{ borderRadius: "var(--radius-minimal)" }}
-            >
-              Today
-            </Link>
+        <div className="mx-auto flex max-w-3xl items-center justify-center px-4 py-3">
+          <div
+            className="inline-flex items-center gap-2 border border-border bg-surface px-3 py-1.5 text-[11px] font-mono text-text-secondary"
+            style={{ borderRadius: "var(--radius-minimal)" }}
+          >
+            <span>{today}</span>
+            {sampleTitle && (
+              <>
+                <span className="text-text-muted">•</span>
+                <Link
+                  href="/"
+                  className="font-semibold text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  {sampleTitle}
+                </Link>
+              </>
+            )}
           </div>
         </div>
+      </div>
+
+      <div className="px-4 pt-8 pb-1 text-center">
+        <h1 className="text-[2rem] font-bold uppercase tracking-[0.18em] text-text-primary sm:text-[2.4rem]">
+          Discover
+        </h1>
       </div>
 
       {/* Swipe Feed */}

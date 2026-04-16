@@ -31,19 +31,22 @@ export default async function ProfilePage({ params }: Props) {
   const isOwnProfile = session?.user.id === profile.id;
 
   return (
-    <PageContainer>
-      <div className="space-y-6">
+    <PageContainer className="max-w-[78rem]">
+      <div className="space-y-8">
         {/* ── Profile header ───────────────────────────────────── */}
         <ProfileHeader profile={profile} isOwnProfile={isOwnProfile} stats={stats} />
 
         {/* ── Submissions ──────────────────────────────────────── */}
-        <div>
+        <div
+          className="border border-border bg-background px-4 py-4 sm:px-5"
+          style={{ borderRadius: "var(--radius-minimal)" }}
+        >
           <SectionHeader title="Flips" count={submissions.length} />
 
           {submissions.length === 0 ? (
             <EmptyFlips isOwnProfile={isOwnProfile} />
           ) : (
-            <div className="space-y-0.5">
+            <div className="space-y-3">
               {submissions.map((submission) => (
                 <FlipRow
                   key={submission.id}
@@ -70,20 +73,23 @@ function FlipRow({
   isAuthenticated: boolean;
 }) {
   return (
-    <div>
+    <div className="space-y-2">
       {submission.sample && (
-        <div className="flex items-center gap-2 px-1 mb-1">
-          <span className="text-[10px] font-mono text-text-secondary font-semibold tabular-nums">
-            {formatDate(submission.sample.active_date)}
-          </span>
-          <span className="text-text-muted text-[10px]">·</span>
+        <div className="flex items-center gap-2 px-1">
           <Link
             href="/"
             prefetch={true}
-            className="text-[10px] font-mono text-text-muted hover:text-text-secondary transition-colors truncate"
+            className="text-[11px] font-mono font-semibold tracking-[0.04em] text-text-secondary hover:text-text-primary transition-colors truncate"
           >
             {submission.sample.title}
           </Link>
+          <span className="text-text-muted text-[10px]">•</span>
+          <span
+            className="inline-flex items-center border border-border bg-surface px-1.5 py-0.5 text-[9px] font-mono text-text-muted tabular-nums"
+            style={{ borderRadius: "var(--radius-minimal)" }}
+          >
+            {formatDate(submission.sample.active_date)}
+          </span>
         </div>
       )}
       <SubmissionCard submission={submission} isAuthenticated={isAuthenticated} />

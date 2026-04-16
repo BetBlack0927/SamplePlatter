@@ -41,11 +41,19 @@ interface SubmissionCardProps {
   isAuthenticated?: boolean;
 }
 
+interface RankCertification {
+  label: string;
+  rowStyle: React.CSSProperties;
+  rankColor: string;
+  labelColor: string;
+}
+
 export function SubmissionCard({
   submission,
   rank,
   isAuthenticated = false,
 }: SubmissionCardProps) {
+  const certification = getRankCertification(rank);
   const timeAgo = formatTimeAgo(submission.created_at);
   const profile = submission.profile;
   const hasAudio = !!submission.audio_url;
@@ -154,7 +162,14 @@ export function SubmissionCard({
   }, [hasAudio, isPlaying, submission.id]);
 
   return (
-    <div className="group flex items-center gap-3 px-3 py-2.5 bg-surface border-l-2 border-l-transparent border-y border-y-transparent hover:border-l-accent/40 hover:border-y-border hover:bg-surface-elevated transition-all duration-100" style={{ borderRadius: 'var(--radius-minimal)' }}>
+    <div
+      className="group flex items-center gap-3 px-3 py-2.5 bg-surface border-l-2 border-y border-y-transparent hover:border-y-border hover:bg-surface-elevated transition-all duration-100"
+      style={{
+        borderRadius: "var(--radius-minimal)",
+        borderLeftColor: certification ? certification.rowStyle.borderLeftColor : "transparent",
+        backgroundColor: certification ? certification.rowStyle.backgroundColor : undefined,
+      }}
+    >
 
       {/* Audio element */}
       {hasAudio && (
@@ -198,8 +213,11 @@ export function SubmissionCard({
       )}
 
       {/* Rank */}
-      <span className="w-5 shrink-0 text-right text-[11px] font-mono text-text-secondary select-none tabular-nums font-semibold">
-        {rank ?? "—"}
+      <span
+        className="w-5 shrink-0 text-right text-[11px] font-mono select-none tabular-nums font-semibold"
+        style={{ color: certification ? certification.rankColor : undefined }}
+      >
+        {rank ?? ""}
       </span>
 
       {/* Avatar */}
@@ -220,14 +238,24 @@ export function SubmissionCard({
 
       {/* Producer + title */}
       <div className="w-44 lg:w-48 shrink-0 min-w-0">
-        <Link
-          href={`/profile/${profile?.username ?? "#"}`}
-          prefetch={true}
-          className="block text-sm font-semibold text-text-primary hover:text-white transition-colors truncate leading-tight"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {profile?.display_name ?? "Unknown"}
-        </Link>
+        <div className="flex items-center gap-2 min-w-0">
+          <Link
+            href={`/profile/${profile?.username ?? "#"}`}
+            prefetch={true}
+            className="block min-w-0 text-sm font-semibold text-text-primary hover:text-white transition-colors truncate leading-tight"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {profile?.display_name ?? "Unknown"}
+          </Link>
+          {certification ? (
+            <span
+              className="shrink-0 text-[8px] font-mono font-bold tracking-[0.18em] uppercase"
+              style={{ color: certification.labelColor }}
+            >
+              {certification.label}
+            </span>
+          ) : null}
+        </div>
         <p className="text-[11px] text-text-secondary truncate leading-snug mt-1">
           {submission.title ?? (
             <span className="italic text-text-muted">untitled</span>
@@ -304,6 +332,43 @@ export function SubmissionCard({
 }
 
 /* ─── Icons ─────────────────────────────────────────────────── */
+
+function getRankCertification(rank?: number): RankCertification | null {
+  switch (rank) {
+    case 1:
+      return {
+        label: "Diamond",
+        rowStyle: {
+          borderLeftColor: "#7fe7ff",
+          backgroundColor: "rgba(127, 231, 255, 0.14)",
+        },
+        rankColor: "#dffbff",
+        labelColor: "#9feeff",
+      };
+    case 2:
+      return {
+        label: "Platinum",
+        rowStyle: {
+          borderLeftColor: "#d6dce8",
+          backgroundColor: "rgba(214, 220, 232, 0.14)",
+        },
+        rankColor: "#f5f7fb",
+        labelColor: "#e7edf7",
+      };
+    case 3:
+      return {
+        label: "Gold",
+        rowStyle: {
+          borderLeftColor: "#d7af44",
+          backgroundColor: "rgba(215, 175, 68, 0.14)",
+        },
+        rankColor: "#ffe8a9",
+        labelColor: "#f4cf6d",
+      };
+    default:
+      return null;
+  }
+}
 
 function PlayIcon() {
   return (
