@@ -1,4 +1,4 @@
-const SESSION_ID_KEY = "sample-platter-play-session-id";
+const SESSION_ID_KEY = "freqy-play-session-id";
 
 export function getOrCreatePlaybackSessionId(): string {
   if (typeof window === "undefined") return "";

@@ -1,5 +1,5 @@
 /**
- * Domain types for Sample Platter.
+ * Domain types for Freqy.
  *
  * When you connect a Supabase project, replace this file by running:
  *   npx supabase gen types typescript --project-id <id> > src/types/database.ts

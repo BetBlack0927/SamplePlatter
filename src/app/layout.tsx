@@ -15,11 +15,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Sample Platter",
-    template: "%s — Sample Platter",
+    default: "Freqy",
+    template: "%s - Freqy",
   },
   description:
-    "A daily platform for producers to chop, flip, and submit samples.",
+    "Freqy is a daily platform for producers to chop, flip, and submit samples.",
 };
 
 export default function RootLayout({

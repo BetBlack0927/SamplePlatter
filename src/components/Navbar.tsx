@@ -17,9 +17,8 @@ export async function Navbar() {
           href="/"
           className="shrink-0 group"
         >
-          <span className="text-base text-text-primary tracking-[-0.02em] leading-none">
-            <span className="font-semibold">Sample</span>
-            <span className="font-normal"> Platter</span>
+          <span className="text-base font-semibold uppercase text-text-primary tracking-[0.14em] leading-none">
+            Freqy
           </span>
         </Link>
 

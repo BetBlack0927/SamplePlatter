@@ -17,16 +17,15 @@ export default async function SignUpPage() {
       <div className="w-full max-w-md space-y-6">
         {/* Wordmark */}
         <div className="space-y-3">
-          <div className="text-lg text-text-primary tracking-[-0.02em] leading-none">
-            <span className="font-semibold">Sample</span>
-            <span className="font-normal"> Platter</span>
+          <div className="text-lg font-semibold uppercase text-text-primary tracking-[0.14em] leading-none">
+            Freqy
           </div>
           <div>
             <h1 className="text-xl font-bold text-text-primary tracking-tight">
-              Join Sample Platter
+              Join Freqy
             </h1>
             <p className="text-sm text-text-secondary mt-1.5">
-              A new sample drops every day. Flip it.
+              New flips can hit at any time. Make yours on Freqy.
             </p>
           </div>
         </div>
