@@ -33,9 +33,9 @@ export function SwipeFeed({
   const [isIncomingVisible, setIsIncomingVisible] = useState(false);
   const timeoutRefs = useRef<number[]>([]);
 
-  const EXIT_DURATION_MS = 400;
-  const ENTER_DELAY_MS = 100;
-  const ENTER_DURATION_MS = 460;
+  const EXIT_DURATION_MS = 380;
+  const ENTER_DELAY_MS = 70;
+  const ENTER_DURATION_MS = 480;
 
   const clearScheduledTimeouts = () => {
     timeoutRefs.current.forEach((id) => window.clearTimeout(id));
@@ -150,37 +150,17 @@ export function SwipeFeed({
   // ONLY show if truly empty (not during transition)
   if (allReviewed && !isTransitioning) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="space-y-4 max-w-sm">
-          <div
-            className="w-16 h-16 mx-auto bg-surface-elevated border border-border-focus flex items-center justify-center mb-2"
-            style={{ borderRadius: "var(--radius-minimal)" }}
-          >
-            <CheckIcon />
-          </div>
-          <div className="space-y-2">
-            <p className="text-base font-bold text-text-primary">
-              You&apos;re caught up
-            </p>
-            <p className="text-sm text-text-secondary leading-relaxed">
-              You&apos;ve listened to all available flips for today.
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <Link
-              href="/leaderboard"
-              className="inline-block px-4 py-2 text-[11px] font-mono font-bold text-text-secondary hover:text-text-primary border border-border hover:border-border-focus transition-colors tracking-[0.12em] bg-surface hover:bg-surface-elevated"
-              style={{ borderRadius: "var(--radius-minimal)" }}
-            >
-              Leaderboard
-            </Link>
-            <Link
-              href="/"
-              className="inline-block px-4 py-2 text-[11px] font-mono font-bold text-text-primary hover:text-white transition-colors tracking-[0.12em] underline underline-offset-2"
-            >
-              Back to today
-            </Link>
-          </div>
+      <div className="flex h-full flex-col items-center justify-center px-4 pb-10 text-center">
+        <div className="listen-empty-pulse mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-surface-elevated shadow-[0_0_30px_rgba(255,255,255,0.06)]">
+          <div className="h-2.5 w-2.5 rounded-full bg-text-primary/80" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-[1.4rem] font-semibold tracking-[-0.03em] text-text-primary">
+            You&apos;re caught up
+          </h2>
+          <p className="text-sm text-text-muted">
+            Come back soon for the next batch.
+          </p>
         </div>
       </div>
     );
@@ -207,10 +187,11 @@ export function SwipeFeed({
   }
 
   return (
-    <div className="flex h-full flex-col justify-center px-4 pb-6">
-      <div className="relative mx-auto w-full max-w-md min-h-[36rem]">
+    <div className="flex h-full flex-col justify-center px-4 pb-8 pt-2">
+      <div className="relative mx-auto flex w-full max-w-5xl items-center justify-center min-h-[42rem]">
         {showCard && !isTransitioning && (
           <SwipeCard
+            key={`current-${currentSubmission.id}`}
             submission={currentSubmission}
             isAuthenticated={isAuthenticated}
             onSwipe={handleSwipe}
@@ -220,6 +201,7 @@ export function SwipeFeed({
         {outgoingCard && (
           <div className="absolute inset-x-0 top-0">
             <SwipeCard
+              key={`outgoing-${outgoingCard.submission.id}`}
               submission={outgoingCard.submission}
               isAuthenticated={isAuthenticated}
               onSwipe={handleSwipe}
@@ -233,6 +215,7 @@ export function SwipeFeed({
         {incomingCard && (
           <div className="absolute inset-x-0 top-0">
             <SwipeCard
+              key={`incoming-${incomingCard.id}`}
               submission={incomingCard}
               isAuthenticated={isAuthenticated}
               onSwipe={handleSwipe}
@@ -257,21 +240,5 @@ export function SwipeFeed({
         </div>
       )}
     </div>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className="text-text-primary"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
   );
 }

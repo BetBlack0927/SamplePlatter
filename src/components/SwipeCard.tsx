@@ -28,10 +28,15 @@ export function SwipeCard({
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<"idle" | "liked" | "skipped">("idle");
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchOffsetX, setTouchOffsetX] = useState(0);
   
   const audioRef = useRef<HTMLAudioElement>(null);
   const playTimerRef = useRef<number | null>(null);
   const isRecordingPlayRef = useRef(false);
+  const animationFrameRef = useRef<number | null>(null);
+  const feedbackTimeoutRef = useRef<number | null>(null);
 
   const profile = submission.profile;
   const hasAudio = !!submission.audio_url;
@@ -51,8 +56,21 @@ export function SwipeCard({
       setIsPlaying(false);
     }
 
-    // Notify parent immediately so the visual handoff starts at once.
-    onSwipe(liked, true);
+    setActionFeedback(liked ? "liked" : "skipped");
+    if (feedbackTimeoutRef.current !== null) {
+      window.clearTimeout(feedbackTimeoutRef.current);
+    }
+    feedbackTimeoutRef.current = window.setTimeout(() => {
+      setActionFeedback("idle");
+    }, 520);
+
+    if (liked) {
+      window.setTimeout(() => {
+        onSwipe(true, true);
+      }, 160);
+    } else {
+      onSwipe(liked, true);
+    }
 
     // Save review and like actions in background
     startTransition(async () => {
@@ -78,6 +96,29 @@ export function SwipeCard({
         // Don't block UI - save failed but user already moved on
       }
     });
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (animationState !== "center" || isPending) return;
+    setTouchStartX(e.touches[0]?.clientX ?? null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartX === null) return;
+    const currentX = e.touches[0]?.clientX ?? touchStartX;
+    setTouchOffsetX(currentX - touchStartX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null) return;
+    const threshold = 72;
+    if (touchOffsetX <= -threshold) {
+      void handleSwipe("left");
+    } else if (touchOffsetX >= threshold) {
+      void handleSwipe("right");
+    }
+    setTouchStartX(null);
+    setTouchOffsetX(0);
   };
 
   const togglePlay = () => {
@@ -190,6 +231,34 @@ export function SwipeCard({
   }, [clearPlayTimer, submission.id]);
 
   useEffect(() => {
+    if (!isPlaying || !audioRef.current || isDragging) {
+      if (animationFrameRef.current !== null) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      return;
+    }
+
+    const syncProgress = () => {
+      if (!audioRef.current) return;
+      const current = audioRef.current.currentTime;
+      const total = audioRef.current.duration || duration || submission.duration_seconds || 0;
+      setCurrentTime(current);
+      setPlaybackProgress(total > 0 ? current / total : 0);
+      animationFrameRef.current = window.requestAnimationFrame(syncProgress);
+    };
+
+    animationFrameRef.current = window.requestAnimationFrame(syncProgress);
+
+    return () => {
+      if (animationFrameRef.current !== null) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+  }, [duration, isDragging, isPlaying, submission.duration_seconds]);
+
+  useEffect(() => {
     if (!isPlaying || !hasAudio || isRecordingPlayRef.current) {
       if (!isPlaying) clearPlayTimer();
       return;
@@ -230,15 +299,27 @@ export function SwipeCard({
 
   return (
     <div
-      className={`relative w-full max-w-[20rem] mx-auto transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      className={`relative mx-auto w-full max-w-[29rem] transition-all duration-[460ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
         animationState === "exit-left"
-          ? "opacity-0 -translate-x-[118%] translate-y-1 rotate-[-10deg] scale-[0.98]"
+          ? "opacity-0 -translate-x-20 translate-y-2 scale-[0.985]"
           : animationState === "exit-right"
-          ? "opacity-0 translate-x-[118%] translate-y-1 rotate-[10deg] scale-[0.98]"
+          ? "opacity-0 translate-x-20 translate-y-2 scale-[0.985]"
           : animationState === "enter"
-          ? "opacity-0 translate-y-8 scale-[0.985]"
+          ? "opacity-0 translate-y-6 scale-[0.985]"
           : "opacity-100 translate-x-0 translate-y-0 rotate-0 scale-100"
       }`}
+      style={{
+        transform:
+          animationState === "center"
+            ? `translateX(${touchOffsetX}px) scale(${
+                actionFeedback === "liked" ? 1.03 : 1
+              })`
+            : undefined,
+        opacity:
+          animationState === "center"
+            ? Math.max(0.7, 1 - Math.abs(touchOffsetX) / 420)
+            : undefined,
+      }}
     >
       {/* Hidden Audio Element */}
       {hasAudio && (
@@ -253,153 +334,119 @@ export function SwipeCard({
       )}
 
       <div
-        className="border px-4 pt-4 pb-6 shadow-[0_26px_90px_rgba(0,0,0,0.55)]"
-        style={{
-          borderRadius: "1.8rem",
-          borderColor: "#70736f",
-          backgroundColor: "#b8b8b3",
-          boxShadow:
-            "inset 0 1px 0 rgba(255,255,255,0.32), inset 0 -18px 40px rgba(0,0,0,0.14), 0 26px 90px rgba(0,0,0,0.55)",
-        }}
+        className="mx-auto flex w-full max-w-[24rem] flex-col items-center"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <div
-          className="overflow-hidden border-[3px] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
-          style={{
-            borderRadius: "0.4rem",
-            borderColor: "#4e5356",
-            backgroundColor: "#f7f7f4",
-          }}
+          className={`w-full transition-transform duration-300 ${
+            actionFeedback === "liked" ? "scale-[1.03]" : actionFeedback === "skipped" ? "scale-[0.985]" : ""
+          }`}
         >
-          <div className="flex items-center justify-between border-b px-3 py-1.5 text-[10px] font-bold text-[#1b1b1b]" style={{ borderColor: "#d7dbdd", backgroundColor: "#eef0f1" }}>
-            <span className="inline-flex items-center gap-1">
-              <span className="h-0 w-0 border-y-[4px] border-y-transparent border-l-[6px] border-l-[#5c84a3]" />
-              {isPlaying ? "Now Playing" : "Paused"}
-            </span>
-            <span>{Math.max(1, submission.like_count ?? 1)} of 14</span>
+          <div
+            className={`relative mx-auto aspect-square w-full max-w-[21rem] overflow-hidden rounded-[2rem] bg-[#141414] shadow-[0_30px_80px_rgba(0,0,0,0.52)] ${
+              isPlaying ? "listen-screen-active" : ""
+            }`}
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.15))]" />
+            {profile?.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={profile.avatar_url}
+                alt={profile.display_name}
+                className={`h-full w-full object-cover transition-transform duration-500 ${isPlaying ? "listen-art-breathe" : ""}`}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[#1a1d21] text-[4rem] font-bold text-[#f3f3f1]">
+                {profile?.username?.slice(0, 2).toUpperCase() ?? "??"}
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-[2rem] ring-1 ring-white/8" />
+            <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-white/5 blur-3xl" />
           </div>
 
-          <div className="px-3 pt-3 pb-2">
-            <div className="flex gap-3">
-              <div
-                className="h-20 w-20 shrink-0 overflow-hidden border-2"
-                style={{ borderColor: "#2e3940", borderRadius: "0.18rem" }}
-              >
-                {profile?.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.display_name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-[#1f2a23] text-[1.1rem] font-bold text-[#d9dedb]">
-                    {profile?.username?.slice(0, 2).toUpperCase() ?? "??"}
-                  </div>
-                )}
-              </div>
+          <div className="mt-8 space-y-3 text-center">
+            <h2 className="text-[2rem] font-semibold leading-[0.98] tracking-[-0.06em] text-text-primary sm:text-[2.45rem]">
+              {submission.title || "Untitled"}
+            </h2>
+            <Link
+              href={`/profile/${profile?.username ?? "#"}`}
+              className="block text-[0.98rem] font-medium text-text-secondary transition-colors hover:text-text-primary"
+            >
+              @{profile?.username ?? profile?.display_name ?? "unknown"}
+            </Link>
+            <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-text-muted">
+              {submission.like_count ?? 0} like{(submission.like_count ?? 0) === 1 ? "" : "s"}
+            </p>
+          </div>
 
-              <div className="min-w-0 flex-1 space-y-1 text-[#161616]">
-                <h2 className="line-clamp-2 text-[1.02rem] font-bold leading-[1.05]">
-                  {submission.title || "Untitled"}
-                </h2>
-                <Link
-                  href={`/profile/${profile?.username ?? "#"}`}
-                  className="block truncate text-[13px] font-semibold text-[#202020] hover:underline"
-                >
-                  {profile?.display_name ?? "Unknown"}
-                </Link>
-                <p className="text-[11px] font-semibold text-[#4d4d4d]">
-                  {submission.like_count ?? 0} like{(submission.like_count ?? 0) === 1 ? "" : "s"}
-                </p>
+          <div className="mx-auto mt-8 w-full max-w-[24rem] space-y-2">
+            <div
+              id={`progress-bar-${submission.id}`}
+              className="relative h-8 cursor-pointer overflow-hidden rounded-full"
+              onClick={handleSeek}
+              onMouseDown={handleDragStart}
+            >
+              <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/12" />
+              <div
+                className={`absolute left-0 top-1/2 h-px -translate-y-1/2 ${isPlaying ? "listen-progress-fill" : "bg-white/45"}`}
+                style={{ width: `${playbackProgress * 100}%` }}
+              />
+              <div className="absolute inset-0 flex items-center gap-1.5 px-1">
+                {waveformBars.slice(0, 52).map((h, i) => {
+                  const barProgress = i / 52;
+                  const isPlayed = barProgress < playbackProgress;
+                  return (
+                    <div
+                      key={i}
+                      className={isPlayed ? "bg-white/80" : "bg-white/18"}
+                      style={{
+                        height: `${Math.max(18, h * 0.35)}%`,
+                        width: "100%",
+                        borderRadius: "999px",
+                      }}
+                    />
+                  );
+                })}
               </div>
             </div>
 
-            <div className="mt-3 space-y-1.5">
-              <div
-                id={`progress-bar-${submission.id}`}
-                className="relative h-3 cursor-pointer overflow-hidden border"
-                style={{ borderColor: "#d6dbe0", borderRadius: "0.18rem", backgroundColor: "#ffffff" }}
-                onClick={handleSeek}
-                onMouseDown={handleDragStart}
-              >
-                <div
-                  className="absolute inset-y-0 left-0 transition-all"
-                  style={{
-                    width: `${playbackProgress * 100}%`,
-                    backgroundColor: "#6fb8ee",
-                  }}
-                />
-                <div className="absolute inset-0 flex items-end gap-px px-[2px] pb-[2px]">
-                  {waveformBars.slice(0, 40).map((h, i) => {
-                    const barProgress = i / 40;
-                    const isPlayed = barProgress < playbackProgress;
-                    return (
-                      <div
-                        key={i}
-                        className={isPlayed ? (isPlaying ? "bg-[#2f81d8]" : "bg-[#597e9f]") : "bg-[#a7bbc8]"}
-                        style={{
-                          height: `${Math.max(18, h * 0.45)}%`,
-                          width: "100%",
-                          borderRadius: "1px",
-                          opacity: isPlayed ? 0.95 : 0.7,
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] font-semibold text-[#222]">
-                <span>{formatTime(currentTime)}</span>
-                <span>-{formatTime((duration || submission.duration_seconds || 0) - currentTime)}</span>
-              </div>
+            <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-[0.14em] text-text-muted">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration || submission.duration_seconds || 0)}</span>
             </div>
           </div>
-        </div>
 
-        <div className="relative mx-auto mt-6 h-[13.25rem] w-[13.25rem] rounded-full border border-[#a6a6a2] bg-[#b2b2ad] shadow-[inset_0_2px_12px_rgba(255,255,255,0.32),inset_0_-6px_18px_rgba(0,0,0,0.16)]">
-          <div className="absolute inset-x-0 top-5 text-center text-[12px] font-bold tracking-[0.14em] text-[#8d8d89]">
-            MENU
+          <div className="mx-auto mt-8 flex w-full max-w-[18rem] items-center justify-between gap-4">
+            <ActionButton
+              onClick={() => void handleSwipe("left")}
+              disabled={animationState !== "center" || isPending}
+              label="Skip"
+              active={actionFeedback === "skipped"}
+            >
+              <XIcon />
+            </ActionButton>
+
+            <ActionButton
+              onClick={togglePlay}
+              disabled={!hasAudio}
+              label={isPlaying ? "Pause" : "Play"}
+              primary
+              active={isPlaying}
+            >
+              {isPlaying ? <PauseIcon /> : <PlayIcon />}
+            </ActionButton>
+
+            <ActionButton
+              onClick={() => void handleSwipe("right")}
+              disabled={animationState !== "center" || isPending || !isAuthenticated}
+              label="Like"
+              active={actionFeedback === "liked"}
+            >
+              <HeartIcon filled={actionFeedback === "liked"} />
+            </ActionButton>
           </div>
-
-          <WheelButton
-            className="absolute left-[1.05rem] top-1/2 -translate-y-1/2"
-            onClick={() => handleSwipe("left")}
-            disabled={animationState !== "center" || isPending}
-            ariaLabel="Skip"
-          >
-            <XIcon soft />
-          </WheelButton>
-
-          <WheelButton
-            className="absolute right-[1.05rem] top-1/2 -translate-y-1/2"
-            onClick={() => handleSwipe("right")}
-            disabled={animationState !== "center" || isPending || !isAuthenticated}
-            variant="primary"
-            ariaLabel="Like"
-          >
-            <HeartIcon filled={false} large />
-          </WheelButton>
-
-          <WheelButton
-            className="absolute bottom-[1.05rem] left-1/2 -translate-x-1/2"
-            onClick={togglePlay}
-            disabled={!hasAudio}
-            ariaLabel={isPlaying ? "Pause" : "Play"}
-          >
-            {isPlaying ? <PauseIcon soft /> : <PlayIcon soft />}
-          </WheelButton>
-
-          <button
-            onClick={togglePlay}
-            disabled={!hasAudio}
-            aria-label={isPlaying ? "Pause track" : "Play track"}
-            className="absolute left-1/2 top-1/2 flex h-[4.45rem] w-[4.45rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#ddddda] bg-[#ecece8] text-[#7c7c78] shadow-[inset_0_1px_3px_rgba(255,255,255,0.7),0_1px_2px_rgba(0,0,0,0.10)] transition-all active:scale-95 disabled:opacity-40"
-          >
-            <span className="text-[9px] font-bold uppercase tracking-[0.18em]">
-              {isPlaying ? "Pause" : "Play"}
-            </span>
-          </button>
         </div>
       </div>
 
@@ -417,7 +464,7 @@ export function SwipeCard({
 
 function PlayIcon({ soft = false }: { soft?: boolean }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={soft ? "text-[#8d8d89] ml-0.5" : "text-text-primary ml-0.5"}>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className={soft ? "text-[#8d8d89] ml-0.5" : "text-current ml-0.5"}>
       <path d="M8 5v14l11-7z" />
     </svg>
   );
@@ -425,14 +472,14 @@ function PlayIcon({ soft = false }: { soft?: boolean }) {
 
 function PauseIcon({ soft = false }: { soft?: boolean }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={soft ? "text-[#8d8d89]" : "text-text-primary"}>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className={soft ? "text-[#8d8d89]" : "text-current"}>
       <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
     </svg>
   );
 }
 
 function HeartIcon({ filled, large }: { filled: boolean; large?: boolean }) {
-  const size = large ? 22 : 12;
+  const size = large ? 22 : 18;
   return (
     <svg
       width={size}
@@ -452,8 +499,8 @@ function HeartIcon({ filled, large }: { filled: boolean; large?: boolean }) {
 function XIcon({ soft = false }: { soft?: boolean }) {
   return (
     <svg
-      width="22"
-      height="22"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       fill="none"
       stroke={soft ? "#8d8d89" : "currentColor"}
@@ -466,36 +513,43 @@ function XIcon({ soft = false }: { soft?: boolean }) {
   );
 }
 
-function WheelButton({
-  className,
+function ActionButton({
   onClick,
   disabled,
-  variant = "secondary",
-  ariaLabel,
+  label,
+  primary = false,
+  active = false,
   children,
 }: {
-  className: string;
   onClick: () => void;
   disabled: boolean;
-  variant?: "secondary" | "primary";
-  ariaLabel: string;
+  label: string;
+  primary?: boolean;
+  active?: boolean;
   children: React.ReactNode;
 }) {
-  const isPrimary = variant === "primary";
-
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      className={`${className} inline-flex h-12 w-12 items-center justify-center rounded-full border shadow-[inset_0_1px_2px_rgba(255,255,255,0.85),0_2px_6px_rgba(0,0,0,0.14)] transition-all active:scale-95 disabled:opacity-40 ${
-        isPrimary
-          ? "border-[#d6d6d1] bg-[#f7f7f3] text-[#9b9b96] hover:border-[#c6c6c1] hover:bg-white hover:text-[#7e7ee8]"
-          : "border-[#d2d2cd] bg-[#f2f2ee] text-[#94948f] hover:border-[#c0c0bb] hover:bg-[#fbfbf8] hover:text-[#72726e]"
-      }`}
-    >
-      {children}
-    </button>
+    <div className="flex flex-1 flex-col items-center gap-2">
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        className={`flex h-14 w-14 items-center justify-center rounded-full border transition-all duration-200 active:scale-95 disabled:opacity-35 ${
+          primary
+            ? active
+              ? "border-white/28 bg-white text-black shadow-[0_0_35px_rgba(255,255,255,0.18)]"
+              : "border-white/15 bg-white/92 text-black shadow-[0_10px_30px_rgba(255,255,255,0.08)]"
+            : active
+            ? "border-white/30 bg-white/12 text-white shadow-[0_0_25px_rgba(255,255,255,0.1)]"
+            : "border-white/12 bg-white/6 text-white/88 hover:border-white/20 hover:bg-white/10"
+        }`}
+      >
+        {children}
+      </button>
+      <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-text-muted">
+        {label}
+      </span>
+    </div>
   );
 }
 

@@ -64,8 +64,11 @@ export default async function ListenPage() {
         </div>
       </div>
 
-      <div className="px-4 pt-8 pb-2 text-center shrink-0">
-        <h1 className="text-[2rem] font-bold uppercase tracking-[0.18em] text-text-primary sm:text-[2.4rem]">
+      <div className="px-4 pt-7 pb-1 text-center shrink-0">
+        <p className="mb-2 text-[11px] font-mono uppercase tracking-[0.24em] text-text-muted">
+          Today&apos;s flips
+        </p>
+        <h1 className="text-[1.75rem] font-bold uppercase tracking-[0.24em] text-text-primary sm:text-[2.1rem]">
           Discover
         </h1>
       </div>
