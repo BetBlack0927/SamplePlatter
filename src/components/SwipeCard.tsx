@@ -334,7 +334,7 @@ export function SwipeCard({
       )}
 
       <div
-        className="mx-auto flex w-full max-w-[24rem] flex-col items-center"
+        className="mx-auto flex w-full max-w-[23rem] flex-col items-center"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -345,7 +345,7 @@ export function SwipeCard({
           }`}
         >
           <div
-            className={`relative mx-auto aspect-square w-full max-w-[21rem] overflow-hidden rounded-[2rem] bg-[#141414] shadow-[0_30px_80px_rgba(0,0,0,0.52)] ${
+            className={`relative mx-auto aspect-square w-full max-w-[18.75rem] overflow-hidden rounded-[1.8rem] bg-[#141414] shadow-[0_30px_80px_rgba(0,0,0,0.52)] ${
               isPlaying ? "listen-screen-active" : ""
             }`}
           >
@@ -362,17 +362,17 @@ export function SwipeCard({
                 {profile?.username?.slice(0, 2).toUpperCase() ?? "??"}
               </div>
             )}
-            <div className="absolute inset-0 rounded-[2rem] ring-1 ring-white/8" />
-            <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-white/5 blur-3xl" />
+            <div className="absolute inset-0 rounded-[1.8rem] ring-1 ring-white/8" />
+            <div className="absolute -inset-5 -z-10 rounded-[2.2rem] bg-white/5 blur-3xl" />
           </div>
 
-          <div className="mt-8 space-y-3 text-center">
-            <h2 className="text-[2rem] font-semibold leading-[0.98] tracking-[-0.06em] text-text-primary sm:text-[2.45rem]">
+          <div className="mt-5 space-y-2 text-center">
+            <h2 className="text-[1.75rem] font-semibold leading-[0.98] tracking-[-0.06em] text-text-primary sm:text-[2.15rem]">
               {submission.title || "Untitled"}
             </h2>
             <Link
               href={`/profile/${profile?.username ?? "#"}`}
-              className="block text-[0.98rem] font-medium text-text-secondary transition-colors hover:text-text-primary"
+              className="block text-[0.94rem] font-medium text-text-secondary transition-colors hover:text-text-primary"
             >
               @{profile?.username ?? profile?.display_name ?? "unknown"}
             </Link>
@@ -381,7 +381,7 @@ export function SwipeCard({
             </p>
           </div>
 
-          <div className="mx-auto mt-8 w-full max-w-[24rem] space-y-2">
+          <div className="mx-auto mt-5 w-full max-w-[23rem] space-y-2">
             <div
               id={`progress-bar-${submission.id}`}
               className="relative h-8 cursor-pointer overflow-hidden rounded-full"
@@ -418,7 +418,7 @@ export function SwipeCard({
             </div>
           </div>
 
-          <div className="mx-auto mt-8 flex w-full max-w-[18rem] items-center justify-between gap-4">
+          <div className="mx-auto mt-5 flex w-full max-w-[16.5rem] items-center justify-between gap-3">
             <ActionButton
               onClick={() => void handleSwipe("left")}
               disabled={animationState !== "center" || isPending}
@@ -546,7 +546,7 @@ function ActionButton({
       >
         {children}
       </button>
-      <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-text-muted">
+      <span className="text-[9px] leading-none font-mono uppercase tracking-[0.16em] text-text-muted">
         {label}
       </span>
     </div>

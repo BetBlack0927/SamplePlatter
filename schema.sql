@@ -198,6 +198,60 @@ $$;
 -- ─── Helpful views ────────────────────────────────────────────
 
 -- Submission with like count (useful for feeds and leaderboard)
+-- battle_matchups
+-- Each row represents one head-to-head battle pairing shown to a user.
+create table public.battle_matchups (
+  id                  uuid primary key default gen_random_uuid(),
+  sample_id           uuid not null references public.samples(id) on delete cascade,
+  left_submission_id  uuid not null references public.submissions(id) on delete cascade,
+  right_submission_id uuid not null references public.submissions(id) on delete cascade,
+  created_at          timestamptz not null default now(),
+  check (left_submission_id <> right_submission_id)
+);
+
+alter table public.battle_matchups enable row level security;
+
+create policy "Battle matchups are publicly readable"
+  on public.battle_matchups for select using (true);
+
+create policy "Authenticated users can create battle matchups"
+  on public.battle_matchups for insert with check (auth.uid() is not null);
+
+
+-- battle_votes
+-- Each row records one user's winner selection for a specific matchup.
+create table public.battle_votes (
+  id                   uuid primary key default gen_random_uuid(),
+  matchup_id           uuid not null references public.battle_matchups(id) on delete cascade,
+  left_submission_id   uuid not null references public.submissions(id) on delete cascade,
+  right_submission_id  uuid not null references public.submissions(id) on delete cascade,
+  winner_submission_id uuid not null references public.submissions(id) on delete cascade,
+  loser_submission_id  uuid not null references public.submissions(id) on delete cascade,
+  voter_user_id        uuid not null references public.profiles(id) on delete cascade,
+  created_at           timestamptz not null default now(),
+  unique (matchup_id, voter_user_id),
+  check (left_submission_id <> right_submission_id),
+  check (winner_submission_id <> loser_submission_id)
+);
+
+create index battle_votes_created_at_idx
+  on public.battle_votes (created_at desc);
+create index battle_votes_winner_submission_idx
+  on public.battle_votes (winner_submission_id);
+create index battle_votes_loser_submission_idx
+  on public.battle_votes (loser_submission_id);
+create index battle_votes_voter_user_idx
+  on public.battle_votes (voter_user_id);
+
+alter table public.battle_votes enable row level security;
+
+create policy "Battle votes are publicly readable"
+  on public.battle_votes for select using (true);
+
+create policy "Users can insert their own battle votes"
+  on public.battle_votes for insert with check (auth.uid() = voter_user_id);
+
+
 create or replace view public.submissions_with_likes as
 select
   s.*,

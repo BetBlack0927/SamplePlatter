@@ -66,6 +66,25 @@ export interface SubmissionPlay {
   created_at: string;
 }
 
+export interface BattleMatchupRow {
+  id: string;
+  sample_id: string;
+  left_submission_id: string;
+  right_submission_id: string;
+  created_at: string;
+}
+
+export interface BattleVoteRow {
+  id: string;
+  matchup_id: string;
+  left_submission_id: string;
+  right_submission_id: string;
+  winner_submission_id: string;
+  loser_submission_id: string;
+  voter_user_id: string;
+  created_at: string;
+}
+
 /* ─── Supabase Database type shell ─────────────────────────── */
 /* Matches the shape expected by @supabase/supabase-js generics */
 
@@ -100,6 +119,18 @@ export type Database = {
         Row: SubmissionPlay;
         Insert: Omit<SubmissionPlay, "id" | "created_at">;
         Update: Partial<Omit<SubmissionPlay, "id" | "created_at">>;
+        Relationships: [];
+      };
+      battle_matchups: {
+        Row: BattleMatchupRow;
+        Insert: Omit<BattleMatchupRow, "created_at">;
+        Update: Partial<Omit<BattleMatchupRow, "created_at">>;
+        Relationships: [];
+      };
+      battle_votes: {
+        Row: BattleVoteRow;
+        Insert: Omit<BattleVoteRow, "id" | "created_at">;
+        Update: Partial<Omit<BattleVoteRow, "id" | "created_at">>;
         Relationships: [];
       };
     };

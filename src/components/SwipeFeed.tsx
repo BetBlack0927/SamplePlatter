@@ -109,7 +109,7 @@ export function SwipeFeed({
   // State A: No submissions exist at all for today's sample
   if (noSubmissionsExist && !hasSample) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+      <div className="flex h-full flex-col items-center justify-center text-center px-4">
         <div className="space-y-3 max-w-sm">
           <p className="text-base font-bold text-text-primary">
             No sample today
@@ -125,7 +125,7 @@ export function SwipeFeed({
   // State A: No submissions exist for today's sample yet
   if (noSubmissionsExist && hasSample) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+      <div className="flex h-full flex-col items-center justify-center text-center px-4">
         <div className="space-y-3 max-w-sm">
           <p className="text-base font-bold text-text-primary">
             No flips yet
@@ -170,7 +170,7 @@ export function SwipeFeed({
   if (!showCard && !isTransitioning) {
     // Safety fallback - shouldn't reach here
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+      <div className="flex h-full flex-col items-center justify-center text-center px-4">
         <div className="space-y-3 max-w-sm">
           <p className="text-base font-bold text-text-primary">
             Something went wrong
@@ -187,8 +187,8 @@ export function SwipeFeed({
   }
 
   return (
-    <div className="flex h-full flex-col justify-center px-4 pb-8 pt-2">
-      <div className="relative mx-auto flex w-full max-w-5xl items-center justify-center min-h-[42rem]">
+    <div className="flex h-full min-h-0 flex-col justify-center overflow-hidden px-4 pb-4 pt-1">
+      <div className="relative mx-auto flex h-full min-h-0 w-full max-w-5xl items-center justify-center overflow-hidden">
         {showCard && !isTransitioning && (
           <SwipeCard
             key={`current-${currentSubmission.id}`}
@@ -227,7 +227,7 @@ export function SwipeFeed({
 
       {/* Footer Hint */}
       {!isAuthenticated && (
-        <div className="mt-6 text-center shrink-0">
+        <div className="mt-4 text-center shrink-0">
           <p className="text-[11px] font-mono text-text-muted">
             <Link
               href="/sign-in"

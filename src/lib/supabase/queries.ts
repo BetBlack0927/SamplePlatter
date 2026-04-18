@@ -1,6 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { cache } from "react";
 import type { Profile, Sample, Submission } from "@/types/database";
+import {
+  buildProducerBattleStats,
+  buildSubmissionBattleStats,
+  getPairKey,
+  sortBattleStats,
+  type ProducerBattleStats,
+  type SubmissionBattleStats,
+} from "@/lib/battles";
 
 /* ─── Auth types ─────────────────────────────────────────────── */
 
@@ -270,6 +278,45 @@ export async function getUnreviewedSubmissions(
   })) as Submission[];
 }
 
+export async function getBattleCandidates(
+  sampleId: string,
+  userId?: string
+): Promise<Submission[]> {
+  const submissions = await fetchSubmissions({
+    sampleId,
+    userId,
+    sort: "new",
+    limit: 48,
+  });
+
+  if (!userId) return submissions;
+  return submissions.filter((submission) => submission.user_id !== userId);
+}
+
+export async function getSeenBattlePairKeys(
+  submissionIds: string[],
+  userId?: string
+): Promise<string[]> {
+  if (!userId || submissionIds.length < 2) return [];
+
+  const supabase = await createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.from("battle_votes") as any)
+    .select("left_submission_id, right_submission_id")
+    .eq("voter_user_id", userId)
+    .in("left_submission_id", submissionIds)
+    .in("right_submission_id", submissionIds);
+
+  if (error || !data) return [];
+
+  return [
+    ...new Set(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (data as any[]).map((row) => getPairKey(row.left_submission_id, row.right_submission_id))
+    ),
+  ];
+}
+
 /* ─── Profile queries ───────────────────────────────────────── */
 
 export interface ProfileStats {
@@ -413,17 +460,24 @@ function calcStreak(createdAts: string[]): number {
 
 /* ─── Leaderboard queries ────────────────────────────────────── */
 
-export interface ProducerStat {
-  username: string;
-  display_name: string;
-  total_likes: number;
-  total_flips: number;
+export interface LeaderboardData {
+  topFlips: SubmissionBattleStats[];
+  topProducers: ProducerBattleStats[];
+  period: LeaderboardPeriod;
 }
 
-export interface LeaderboardData {
-  topFlips: Submission[];
-  topProducers: ProducerStat[];
-  period: LeaderboardPeriod;
+function isMissingBattleTableError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+
+  const code = "code" in error ? error.code : undefined;
+  const message = "message" in error ? String(error.message ?? "") : "";
+  const normalizedMessage = message.toLowerCase();
+
+  return (
+    code === "42P01" ||
+    normalizedMessage.includes("battle_votes") ||
+    normalizedMessage.includes("battle_matchups")
+  );
 }
 
 /**
@@ -440,60 +494,79 @@ export interface LeaderboardData {
  */
 export async function getLeaderboardData(
   period: LeaderboardPeriod = "today",
-  userId?: string
+  userId?: string // eslint-disable-line @typescript-eslint/no-unused-vars
 ): Promise<LeaderboardData> {
   const since = periodStartISO(period);
-  const viewerSessionPromise =
-    userId === undefined ? getCurrentSession() : Promise.resolve(null);
+  const supabase = await createClient();
+  const minimumBattles = 3;
 
   // Top producers — aggregate likes per user across the same period
-  const supabase = await createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let producerQ: any = (supabase.from("submissions_with_likes") as any).select(
-    "user_id, like_count"
-  );
-  if (since) producerQ = producerQ.gte("created_at", since);
-  const producerRowsPromise = producerQ;
-
-  const resolvedUserId = userId ?? (await viewerSessionPromise)?.user.id;
-
-  const [topFlipsResult, { data: producerRows }] = await Promise.all([
-    fetchSubmissions({ since, userId: resolvedUserId, limit: 10 }),
-    producerRowsPromise,
-  ]);
-
-  const topFlips = topFlipsResult;
-
-  const producerMap = new Map<string, { total_likes: number; total_flips: number }>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ((producerRows as any[]) ?? []).forEach((row: any) => {
-    const cur = producerMap.get(row.user_id) ?? { total_likes: 0, total_flips: 0 };
-    producerMap.set(row.user_id, {
-      total_likes: cur.total_likes + (row.like_count ?? 0),
-      total_flips: cur.total_flips + 1,
-    });
-  });
-
-  if (producerMap.size === 0) {
-    return { topFlips, topProducers: [], period };
-  }
-
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, username, display_name")
-    .in("id", [...producerMap.keys()]);
-
-  const topProducers: ProducerStat[] = (
+  try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((profiles as any[]) ?? []).map((p: any) => ({
-      username: p.username as string,
-      display_name: p.display_name as string,
-      total_likes: producerMap.get(p.id)?.total_likes ?? 0,
-      total_flips: producerMap.get(p.id)?.total_flips ?? 0,
-    }))
-  )
-    .sort((a, b) => b.total_likes - a.total_likes)
-    .slice(0, 10);
+    let voteQuery: any = (supabase.from("battle_votes") as any).select(
+      "winner_submission_id, loser_submission_id, created_at"
+    );
 
-  return { topFlips, topProducers, period };
+    if (since) {
+      voteQuery = voteQuery.gte("created_at", since);
+    }
+
+    const { data: voteRows, error: voteError } = await voteQuery;
+
+    if (voteError) {
+      return { topFlips: [], topProducers: [], period };
+    }
+
+    const votes = (voteRows ?? []) as {
+      winner_submission_id: string;
+      loser_submission_id: string;
+      created_at: string;
+    }[];
+
+    if (votes.length === 0) {
+      return { topFlips: [], topProducers: [], period };
+    }
+
+    const submissionIds = [
+      ...new Set(
+        votes.flatMap((vote) => [vote.winner_submission_id, vote.loser_submission_id])
+      ),
+    ];
+
+    const submissions = await fetchSubmissions({ limit: 200, sort: "new" });
+    const relevantSubmissions = submissions.filter((submission) =>
+      submissionIds.includes(submission.id)
+    );
+
+    if (relevantSubmissions.length === 0) {
+      return { topFlips: [], topProducers: [], period };
+    }
+
+    const submissionStats = buildSubmissionBattleStats(votes, relevantSubmissions);
+    const producerStats = buildProducerBattleStats(submissionStats);
+
+    const rankedFlips = submissionStats.filter(
+      (entry) => entry.battlesPlayed >= minimumBattles
+    );
+    const rankedProducers = producerStats.filter(
+      (entry) => entry.battlesPlayed >= minimumBattles
+    );
+
+    return {
+      topFlips: sortBattleStats(
+        rankedFlips.length > 0 ? rankedFlips : submissionStats
+      ).slice(0, 10),
+      topProducers: sortBattleStats(
+        rankedProducers.length > 0 ? rankedProducers : producerStats
+      ).slice(0, 10),
+      period,
+    };
+  } catch (error) {
+    if (isMissingBattleTableError(error)) {
+      return { topFlips: [], topProducers: [], period };
+    }
+
+    console.error("getLeaderboardData battle mode failed:", error);
+    return { topFlips: [], topProducers: [], period };
+  }
 }
