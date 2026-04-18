@@ -321,10 +321,8 @@ export async function getSeenBattlePairKeys(
 
 export interface ProfileStats {
   totalFlips: number;
-  totalLikes: number;
-  /** Consecutive calendar days (UTC) with at least one submission ending today
-   *  or yesterday. Returns 0 if the user hasn't submitted recently. */
-  streak: number;
+  totalBattles: number;
+  winRate: number;
 }
 
 export interface ProfilePageData {
@@ -370,9 +368,46 @@ export async function getProfilePageData(
 
   // 3. Stats — computed from the rows we already fetched (no extra queries)
   const totalFlips = typedRows.length;
+  const submissionIds = typedRows.map((r) => r.id as string);
+
+  const [winnerVotesResult, loserVotesResult] = submissionIds.length
+    ? await Promise.all([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from("battle_votes") as any)
+          .select("winner_submission_id, loser_submission_id")
+          .in("winner_submission_id", submissionIds),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from("battle_votes") as any)
+          .select("winner_submission_id, loser_submission_id")
+          .in("loser_submission_id", submissionIds),
+      ])
+    : [{ data: null }, { data: null }];
+
+  const battleRecordMap = new Map<string, { wins: number; losses: number }>();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const totalLikes = typedRows.reduce((sum: number, r: any) => sum + (r.like_count ?? 0), 0);
-  const streak = calcStreak(typedRows.map((r) => r.created_at as string));
+  ((winnerVotesResult.data as any[]) ?? []).forEach((vote) => {
+    const current = battleRecordMap.get(vote.winner_submission_id) ?? { wins: 0, losses: 0 };
+    current.wins += 1;
+    battleRecordMap.set(vote.winner_submission_id, current);
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ((loserVotesResult.data as any[]) ?? []).forEach((vote) => {
+    const current = battleRecordMap.get(vote.loser_submission_id) ?? { wins: 0, losses: 0 };
+    current.losses += 1;
+    battleRecordMap.set(vote.loser_submission_id, current);
+  });
+
+  let totalWins = 0;
+  let totalLosses = 0;
+  battleRecordMap.forEach((record) => {
+    totalWins += record.wins;
+    totalLosses += record.losses;
+  });
+
+  const totalBattles = totalWins + totalLosses;
+  const winRate = totalBattles > 0 ? totalWins / totalBattles : 0;
 
   // 4. Liked set for current viewer
   const likedSet = new Set<string>();
@@ -416,46 +451,20 @@ export async function getProfilePageData(
       profile,
       like_count: row.like_count ?? 0,
       liked_by_user: likedSet.has(row.id),
+      battle_wins: battleRecordMap.get(row.id)?.wins ?? 0,
+      battle_losses: battleRecordMap.get(row.id)?.losses ?? 0,
+      battles_played:
+        (battleRecordMap.get(row.id)?.wins ?? 0) + (battleRecordMap.get(row.id)?.losses ?? 0),
+      win_rate:
+        (battleRecordMap.get(row.id)?.wins ?? 0) + (battleRecordMap.get(row.id)?.losses ?? 0) > 0
+          ? (battleRecordMap.get(row.id)?.wins ?? 0) /
+            ((battleRecordMap.get(row.id)?.wins ?? 0) + (battleRecordMap.get(row.id)?.losses ?? 0))
+          : 0,
       sample: sampleMap.get(row.sample_id),
     })
   );
 
-  return { profile, stats: { totalFlips, totalLikes, streak }, submissions };
-}
-
-/**
- * Counts consecutive calendar days (UTC) that have at least one submission,
- * starting from the most recent submission and working backwards.
- * The streak is active only if the user submitted today or yesterday.
- */
-function calcStreak(createdAts: string[]): number {
-  if (createdAts.length === 0) return 0;
-
-  const toDate = (iso: string) => iso.split("T")[0]; // "YYYY-MM-DD"
-  const addDays = (date: string, n: number) => {
-    const d = new Date(date + "T00:00:00Z");
-    d.setUTCDate(d.getUTCDate() + n);
-    return d.toISOString().split("T")[0];
-  };
-
-  const today = toDate(new Date().toISOString());
-  const yesterday = addDays(today, -1);
-
-  // Unique dates, sorted descending
-  const dates = [...new Set(createdAts.map(toDate))].sort().reverse();
-
-  // Streak must start from today or yesterday to be "active"
-  if (dates[0] !== today && dates[0] !== yesterday) return 0;
-
-  let streak = 1;
-  for (let i = 1; i < dates.length; i++) {
-    if (dates[i] === addDays(dates[i - 1], -1)) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-  return streak;
+  return { profile, stats: { totalFlips, totalBattles, winRate }, submissions };
 }
 
 /* ─── Leaderboard queries ────────────────────────────────────── */

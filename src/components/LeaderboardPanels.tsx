@@ -155,23 +155,29 @@ function LeaderboardFlipRow({
 
       <div className="leaderboard-row__rank">{rank}</div>
 
-      <AvatarBox
-        src={stat.submission.profile?.avatar_url}
-        alt={displayName}
-        fallback={displayName}
-      />
+      <Link
+        href={`/profile/${username}`}
+        className="contents"
+        aria-label={`Open ${displayName}'s profile`}
+      >
+        <AvatarBox
+          src={stat.submission.profile?.avatar_url}
+          alt={displayName}
+          fallback={displayName}
+        />
 
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-[1rem] font-semibold tracking-[-0.03em] text-text-primary sm:text-[1.08rem]">
-            {displayName}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-[1rem] font-semibold tracking-[-0.03em] text-text-primary transition-colors hover:text-white sm:text-[1.08rem]">
+              {displayName}
+            </p>
+            {medal ? <span className="leaderboard-medal">{medal}</span> : null}
+          </div>
+          <p className="truncate text-sm text-text-secondary transition-colors hover:text-text-primary">
+            {stat.submission.title ?? "Untitled flip"}
           </p>
-          {medal ? <span className="leaderboard-medal">{medal}</span> : null}
         </div>
-        <p className="truncate text-sm text-text-secondary">
-          {stat.submission.title ?? "Untitled flip"}
-        </p>
-      </div>
+      </Link>
 
       <div className="hidden min-w-0 items-center gap-4 lg:flex">
         <div className="leaderboard-waveform">
@@ -286,8 +292,8 @@ function ProducerRow({
   const rowTone = getRowTone(rank);
 
   return (
-    <Link href={`/profile/${stat.username}`} className={`leaderboard-row ${rowTone}`}>
-      <div className="leaderboard-row__rank">{rank}</div>
+    <Link href={`/profile/${stat.username}`} className={`leaderboard-row leaderboard-row--producer ${rowTone}`}>
+      <div className="leaderboard-row__rank leaderboard-row__rank--producer">{rank}</div>
 
       <AvatarBox
         src={stat.avatarUrl}
@@ -298,16 +304,16 @@ function ProducerRow({
 
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <p className="truncate text-[1rem] font-semibold tracking-[-0.03em] text-text-primary">
+          <p className="truncate text-[0.96rem] font-semibold tracking-[-0.03em] text-text-primary">
             {stat.displayName}
           </p>
           {medal ? <span className="leaderboard-medal">{medal}</span> : null}
         </div>
-        <p className="truncate text-sm text-text-secondary">@{stat.username}</p>
+        <p className="truncate text-[0.92rem] text-text-secondary">@{stat.username}</p>
       </div>
 
       <div className="text-right">
-        <p className="text-[1.05rem] font-semibold tracking-[-0.04em] text-text-primary">
+        <p className="text-[0.98rem] font-semibold tracking-[-0.04em] text-text-primary">
           {formatPercent(stat.winRate)}
         </p>
         <p className="mt-1 text-[11px] font-mono uppercase tracking-[0.14em] text-text-muted">
@@ -342,6 +348,7 @@ export function LeaderboardPanels({
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const visibleTopProducers = topProducers.slice(0, 3);
 
   async function handleRequestPlay(audio: HTMLAudioElement | null, submissionId: string) {
     if (!audio || !submissionId) {
@@ -369,7 +376,7 @@ export function LeaderboardPanels({
   }
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[1.45fr_0.92fr]">
+    <div className="grid gap-8 xl:grid-cols-[1.7fr_0.68fr]">
       <section className="space-y-4">
         <div className="leaderboard-section-header">
           <div className="flex items-center gap-3">
@@ -400,24 +407,24 @@ export function LeaderboardPanels({
         )}
       </section>
 
-      <section className="space-y-4">
+      <section className="space-y-4 xl:max-w-[420px] xl:justify-self-end">
         <div className="leaderboard-section-header">
           <div className="flex items-center gap-3">
             <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-text-primary">
               Top producers
             </h2>
-            <span className="leaderboard-count">{topProducers.length}</span>
+            <span className="leaderboard-count">{visibleTopProducers.length}</span>
           </div>
         </div>
 
-        {topProducers.length === 0 ? (
+        {visibleTopProducers.length === 0 ? (
           <EmptySection
             title="No producer standings yet"
             body="Battle winners will roll up into producer records as matchups come in."
           />
         ) : (
           <div className="space-y-[2px] border-t border-white/8 pt-4">
-            {topProducers.map((stat, index) => (
+            {visibleTopProducers.map((stat, index) => (
               <ProducerRow key={stat.userId} rank={index + 1} stat={stat} />
             ))}
           </div>

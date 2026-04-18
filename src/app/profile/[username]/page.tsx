@@ -92,7 +92,11 @@ function FlipRow({
           </span>
         </div>
       )}
-      <SubmissionCard submission={submission} isAuthenticated={isAuthenticated} />
+      <SubmissionCard
+        submission={submission}
+        isAuthenticated={isAuthenticated}
+        statMode="battles"
+      />
     </div>
   );
 }

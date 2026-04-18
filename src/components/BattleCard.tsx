@@ -31,7 +31,6 @@ function buildWaveform(submissionId: string) {
 export function BattleCard({
   submission,
   artworkUrl,
-  sideLabel,
   state = "idle",
   currentTime,
   duration,
@@ -43,7 +42,6 @@ export function BattleCard({
 }: {
   submission: Submission;
   artworkUrl?: string | null;
-  sideLabel: string;
   state?: BattleCardState;
   currentTime: number;
   duration: number;
@@ -80,25 +78,7 @@ export function BattleCard({
 
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_58%)]" />
 
-      <div className="relative flex items-center justify-between gap-3">
-        <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-text-muted">
-          {sideLabel}
-        </p>
-        <div
-          className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.18em] text-text-secondary"
-          style={{ borderRadius: "999px" }}
-        >
-          {state === "playing"
-            ? "Live"
-            : state === "winner"
-            ? "Winner"
-            : state === "loser"
-            ? "Down"
-            : "Ready"}
-        </div>
-      </div>
-
-      <div className="relative mt-4 grid grid-cols-[112px_minmax(0,1fr)] gap-4 sm:grid-cols-[124px_minmax(0,1fr)]">
+      <div className="relative grid grid-cols-[112px_minmax(0,1fr)] gap-4 sm:grid-cols-[124px_minmax(0,1fr)]">
         <div className="relative h-28 overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.04] sm:h-[124px]">
           {largeAvatarUrl ? (
             <Image
@@ -138,28 +118,22 @@ export function BattleCard({
       </div>
 
       <div className="relative mt-4">
-        <div
-          className="grid gap-[3px]"
-          style={{ gridTemplateColumns: `repeat(${waveform.length}, minmax(0, 1fr))` }}
-        >
-          {waveform.map((height, index) => {
-            const filled = index / waveform.length <= progress;
-            return (
-              <span
-                key={`${submission.id}-${index}`}
-                className={`battle-wave-bar ${filled ? "battle-wave-bar--filled" : ""}`}
-                style={{ height: `${height}px` }}
-              />
-            );
-          })}
-        </div>
-
-        <div className="relative mt-3">
-          <div className="h-px bg-white/10" />
+        <div className="battle-waveform relative">
           <div
-            className="battle-progress absolute left-0 top-0 h-px bg-white/80"
-            style={{ width: `${progress * 100}%` }}
-          />
+            className="grid gap-[3px]"
+            style={{ gridTemplateColumns: `repeat(${waveform.length}, minmax(0, 1fr))` }}
+          >
+            {waveform.map((height, index) => {
+              const filled = index / waveform.length <= progress;
+              return (
+                <span
+                  key={`${submission.id}-${index}`}
+                  className={`battle-wave-bar ${filled ? "battle-wave-bar--filled" : ""}`}
+                  style={{ height: `${height}px` }}
+                />
+              );
+            })}
+          </div>
           <input
             type="range"
             min={0}
@@ -167,7 +141,7 @@ export function BattleCard({
             step={0.1}
             value={Math.min(currentTime, displayDuration || 0)}
             onChange={(event) => onScrub(Number(event.target.value))}
-            className="battle-scrub absolute inset-x-0 top-[-8px] h-4 w-full cursor-pointer appearance-none bg-transparent"
+            className="battle-scrub absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent"
             aria-label={`Scrub ${submission.title ?? "flip"}`}
             disabled={displayDuration <= 0}
           />

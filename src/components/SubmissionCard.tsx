@@ -39,6 +39,7 @@ interface SubmissionCardProps {
   submission: Submission;
   rank?: number;
   isAuthenticated?: boolean;
+  statMode?: "likes" | "battles";
 }
 
 interface RankCertification {
@@ -52,6 +53,7 @@ export function SubmissionCard({
   submission,
   rank,
   isAuthenticated = false,
+  statMode = "likes",
 }: SubmissionCardProps) {
   const certification = getRankCertification(rank);
   const timeAgo = formatTimeAgo(submission.created_at);
@@ -74,6 +76,8 @@ export function SubmissionCard({
   const playbackLabel = displayDuration
     ? `${formatTime(currentTime)} / ${formatTime(displayDuration)}`
     : "";
+  const battleWinRate =
+    submission.win_rate !== undefined ? `${Math.round(submission.win_rate * 100)}%` : "0%";
 
   const clearPlayTimer = () => {
     if (playTimerRef.current !== null) {
@@ -265,7 +269,9 @@ export function SubmissionCard({
 
       {/* Waveform — click to seek, fills as track progresses */}
       <div
-        className="flex-1 min-w-0 h-7 flex items-center gap-px overflow-hidden cursor-pointer"
+        className={`min-w-0 h-7 flex items-center gap-px overflow-hidden cursor-pointer ${
+          statMode === "battles" ? "flex-[0.88]" : "flex-1"
+        }`}
         onClick={seekToPosition}
         title={hasAudio ? "Seek" : undefined}
       >
@@ -291,21 +297,40 @@ export function SubmissionCard({
       {/* Stats */}
       <div className="hidden sm:flex items-center gap-3 shrink-0">
         {playbackLabel && (
-          <span className="text-[11px] font-mono text-text-secondary w-[6.25rem] text-right tabular-nums font-semibold">
+          <span
+            className={`text-[11px] font-mono text-text-secondary tabular-nums font-semibold ${
+              statMode === "battles" ? "w-[5.75rem] text-right mr-1" : "w-[6.25rem] text-right"
+            }`}
+          >
             {playbackLabel}
           </span>
         )}
-        <span className="text-[11px] font-mono text-text-secondary flex items-center gap-1 font-semibold">
-          <EyeIcon />
-          {playCount}
-        </span>
+        {statMode === "battles" ? (
+          <>
+            <div className="flex items-center gap-4 ml-1">
+              <span className="text-[11px] font-mono font-semibold uppercase tracking-[0.14em] text-text-secondary">
+                {submission.battles_played ?? 0} battles
+              </span>
+              <span className="text-[11px] font-mono font-semibold uppercase tracking-[0.14em] text-text-secondary">
+                {battleWinRate} win rate
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="text-[11px] font-mono text-text-secondary flex items-center gap-1 font-semibold">
+              <EyeIcon />
+              {playCount}
+            </span>
 
-        <LikeButton
-          submissionId={submission.id}
-          initialLiked={submission.liked_by_user ?? false}
-          initialCount={submission.like_count ?? 0}
-          isAuthenticated={isAuthenticated}
-        />
+            <LikeButton
+              submissionId={submission.id}
+              initialLiked={submission.liked_by_user ?? false}
+              initialCount={submission.like_count ?? 0}
+              isAuthenticated={isAuthenticated}
+            />
+          </>
+        )}
       </div>
 
       {/* Time */}

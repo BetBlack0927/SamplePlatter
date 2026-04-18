@@ -47,6 +47,10 @@ export interface Submission {
   profile?: Profile;
   like_count?: number;
   liked_by_user?: boolean;
+  battle_wins?: number;
+  battle_losses?: number;
+  battles_played?: number;
+  win_rate?: number;
   /** Sample context — populated by profile/history queries */
   sample?: { title: string; active_date: string };
 }

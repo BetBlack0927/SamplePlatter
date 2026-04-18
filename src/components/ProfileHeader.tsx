@@ -9,8 +9,8 @@ interface ProfileHeaderProps {
   isOwnProfile: boolean;
   stats: {
     totalFlips: number;
-    totalLikes: number;
-    streak: number;
+    totalBattles: number;
+    winRate: number;
   };
 }
 
@@ -117,8 +117,8 @@ export function ProfileHeader({ profile, isOwnProfile, stats }: ProfileHeaderPro
 
           <div className="flex flex-wrap gap-2 pt-1">
             <Stat label="Flips" value={String(stats.totalFlips)} />
-            <Stat label="Likes" value={String(stats.totalLikes)} />
-            {stats.streak > 0 && <Stat label="Streak" value={`${stats.streak}d`} />}
+            <Stat label="Battles" value={String(stats.totalBattles)} />
+            <Stat label="Win Rate" value={`${Math.round(stats.winRate * 100)}%`} />
           </div>
         </div>
       </div>

@@ -369,7 +369,6 @@ export function BattleArena({
         <BattleCard
           submission={currentMatchup.left}
           artworkUrl={sampleArtworkUrl ?? null}
-          sideLabel="Flip A"
           state={leftState}
           currentTime={currentTimes.left}
           duration={durations.left}
@@ -383,7 +382,6 @@ export function BattleArena({
         <BattleCard
           submission={currentMatchup.right}
           artworkUrl={sampleArtworkUrl ?? null}
-          sideLabel="Flip B"
           state={rightState}
           currentTime={currentTimes.right}
           duration={durations.right}

@@ -200,15 +200,40 @@ export function buildProducerBattleStats(
   }));
 }
 
-export function sortBattleStats<T extends { winRate: number; wins?: number; totalWins?: number }>(
+export function computeBattleRankingScore(
+  wins: number,
+  losses: number,
+  battlesPlayed: number
+) {
+  return (wins * 2 - losses) * Math.log(battlesPlayed + 1);
+}
+
+export function sortBattleStats<
+  T extends {
+    winRate: number;
+    battlesPlayed: number;
+    losses?: number;
+    totalLosses?: number;
+    wins?: number;
+    totalWins?: number;
+  },
+>(
   rows: T[]
 ) {
   return [...rows].sort((a, b) => {
+    const aWins = "wins" in a ? (a.wins ?? 0) : (a.totalWins ?? 0);
+    const bWins = "wins" in b ? (b.wins ?? 0) : (b.totalWins ?? 0);
+    const aLosses = "losses" in a ? (a.losses ?? 0) : (a.totalLosses ?? 0);
+    const bLosses = "losses" in b ? (b.losses ?? 0) : (b.totalLosses ?? 0);
+
+    const scoreDelta =
+      computeBattleRankingScore(bWins, bLosses, b.battlesPlayed) -
+      computeBattleRankingScore(aWins, aLosses, a.battlesPlayed);
+    if (Math.abs(scoreDelta) > 0.0001) return scoreDelta;
+
     const winDelta = b.winRate - a.winRate;
     if (Math.abs(winDelta) > 0.0001) return winDelta;
 
-    const aWins = "wins" in a ? (a.wins ?? 0) : (a.totalWins ?? 0);
-    const bWins = "wins" in b ? (b.wins ?? 0) : (b.totalWins ?? 0);
     return bWins - aWins;
   });
 }
